@@ -26,6 +26,7 @@ import {
 } from "../../../hooks/useQueries";
 
 const MAX_DAYS = 6;
+const MS_24H = 24 * 60 * 60 * 1000;
 
 interface VolunteerRow {
   id: string;
@@ -65,8 +66,17 @@ export default function CoordAttendance() {
 
   const [rows, setRows] = useState<VolunteerRow[]>([]);
   const [saving, setSaving] = useState(false);
+  const [savingPointIdx, setSavingPointIdx] = useState<number | null>(null);
 
-  // Track original attendance for save logic
+  // Determine which event columns are unlocked (event date + 24h has passed)
+  const eventUnlocked = useMemo(() => {
+    const now = Date.now();
+    return visibleEvents.map((ev) => {
+      const evDate = ev ? Number(ev.date) : 0;
+      return evDate > 0 && now - evDate >= MS_24H;
+    });
+  }, [visibleEvents]);
+
   const originalSets = useMemo(
     () => [
       buildSet(att0),
@@ -102,6 +112,7 @@ export default function CoordAttendance() {
   }, [volunteers, att0, att1, att2, att3, att4, att5, sh0]);
 
   const toggle = (rowIdx: number, dayIdx: number) => {
+    if (!eventUnlocked[dayIdx]) return;
     setRows((prev) =>
       prev.map((r, i) =>
         i === rowIdx
@@ -117,6 +128,27 @@ export default function CoordAttendance() {
     );
   };
 
+  // Auto-save activity point when input loses focus
+  const handlePointBlur = async (rowIdx: number) => {
+    const row = rows[rowIdx];
+    if (!row || !visibleEvents[0]) return;
+    const points = Number.parseInt(row.activityPoint, 10);
+    const safePoints = Number.isNaN(points) || points < 0 ? 0 : points;
+    setSavingPointIdx(rowIdx);
+    try {
+      await addServiceHours.mutateAsync({
+        volunteerId: row.id,
+        eventId: visibleEvents[0].id,
+        hours: BigInt(safePoints),
+        date: BigInt(Date.now()),
+      });
+      toast.success(`Activity points saved for ${row.name}`);
+    } catch {
+      // may already exist or minor error
+    }
+    setSavingPointIdx(null);
+  };
+
   const handleSaveAll = async () => {
     setSaving(true);
     let errors = 0;
@@ -127,7 +159,7 @@ export default function CoordAttendance() {
         const ev = visibleEvents[i];
         const shouldBePresent = row.days[i];
         const wasPresent = originalSets[i].has(row.id);
-        if (shouldBePresent && !wasPresent) {
+        if (shouldBePresent && !wasPresent && eventUnlocked[i]) {
           try {
             await markAttendanceMutation.mutateAsync({
               volunteerId: row.id,
@@ -212,7 +244,7 @@ export default function CoordAttendance() {
                     <TableHeader>
                       <TableRow>
                         <TableHead
-                          colSpan={3 + MAX_DAYS + 4}
+                          colSpan={3 + MAX_DAYS + 3}
                           className="text-center font-display font-bold text-base py-3"
                           style={{
                             background: "oklch(0.45 0.18 240)",
@@ -242,16 +274,22 @@ export default function CoordAttendance() {
                             key={visibleEvents[i]?.id ?? `day-col-${i}`}
                             className="font-body font-semibold text-white text-center w-12 border-r border-blue-400"
                           >
-                            {visibleEvents[i]
-                              ? visibleEvents[i].title.slice(0, 6)
-                              : String(i + 1)}
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span>
+                                {visibleEvents[i]
+                                  ? visibleEvents[i].title.slice(0, 6)
+                                  : String(i + 1)}
+                              </span>
+                              {visibleEvents[i] && !eventUnlocked[i] && (
+                                <span className="text-xs text-blue-200 font-normal">
+                                  (pending)
+                                </span>
+                              )}
+                            </div>
                           </TableHead>
                         ))}
                         <TableHead className="font-body font-semibold text-white text-center border-r border-blue-400">
                           Total
-                        </TableHead>
-                        <TableHead className="font-body font-semibold text-white text-center border-r border-blue-400">
-                          %
                         </TableHead>
                         <TableHead className="font-body font-semibold text-white text-center border-r border-blue-400">
                           Activity
@@ -270,10 +308,6 @@ export default function CoordAttendance() {
                         const total = row.days
                           .slice(0, visibleEvents.length)
                           .filter(Boolean).length;
-                        const pct =
-                          visibleEvents.length > 0
-                            ? Math.round((total / visibleEvents.length) * 100)
-                            : 0;
                         const ap = Number.parseInt(row.activityPoint, 10);
                         const totalPoints = Number.isNaN(ap) ? 0 : ap * total;
                         const rowNum = rowIdx + 1;
@@ -306,8 +340,14 @@ export default function CoordAttendance() {
                                   <Checkbox
                                     data-ocid={`attendance.checkbox.${rowNum}`}
                                     checked={row.days[dayIdx] ?? false}
+                                    disabled={!eventUnlocked[dayIdx]}
                                     onCheckedChange={() =>
                                       toggle(rowIdx, dayIdx)
+                                    }
+                                    className={
+                                      !eventUnlocked[dayIdx]
+                                        ? "opacity-40 cursor-not-allowed"
+                                        : ""
                                     }
                                   />
                                 ) : (
@@ -320,21 +360,24 @@ export default function CoordAttendance() {
                             <TableCell className="text-center font-body font-semibold border-r">
                               {total}
                             </TableCell>
-                            <TableCell className="text-center font-body border-r">
-                              {pct}%
-                            </TableCell>
                             <TableCell className="border-r">
-                              <Input
-                                data-ocid={`attendance.hours_input.${rowNum}`}
-                                type="number"
-                                min={0}
-                                max={100}
-                                value={row.activityPoint}
-                                onChange={(e) =>
-                                  setPoints(rowIdx, e.target.value)
-                                }
-                                className="font-body h-8 w-20 text-sm text-center"
-                              />
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  data-ocid={`attendance.hours_input.${rowNum}`}
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={row.activityPoint}
+                                  onChange={(e) =>
+                                    setPoints(rowIdx, e.target.value)
+                                  }
+                                  onBlur={() => handlePointBlur(rowIdx)}
+                                  className="font-body h-8 w-20 text-sm text-center"
+                                />
+                                {savingPointIdx === rowIdx && (
+                                  <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="text-center font-body font-bold">
                               {totalPoints}
