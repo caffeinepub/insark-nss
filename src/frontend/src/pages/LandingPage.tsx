@@ -221,7 +221,8 @@ export default function LandingPage({ onLogin }: Props) {
     const maxRetries = 8;
     const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
     // Create actor once and reuse across retries
-    let actor: Awaited<ReturnType<typeof createActorWithConfig>> | null = null;
+    let adminActor: Awaited<ReturnType<typeof createActorWithConfig>> | null =
+      null;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       setAdminRetryStatus(
         attempt === 1
@@ -229,8 +230,8 @@ export default function LandingPage({ onLogin }: Props) {
           : `Retrying... (${attempt}/${maxRetries})`,
       );
       try {
-        actor = await createActorWithConfig();
-        const result = await actor.adminLogin(adminPassword);
+        if (!adminActor) adminActor = await createActorWithConfig();
+        const result = await adminActor.adminLogin(adminPassword);
         if (result === false) {
           setAdminRetryStatus("");
           toast.error("Incorrect password. Access denied.");
@@ -250,9 +251,9 @@ export default function LandingPage({ onLogin }: Props) {
         return;
       } catch (e) {
         console.error(`Admin login attempt ${attempt} failed:`, e);
-        actor = null; // reset actor on error so next attempt gets a fresh one
+        adminActor = null; // reset on error so next attempt gets a fresh connection
         if (attempt < maxRetries) {
-          await delay(3000);
+          await delay(2000);
         } else {
           setAdminRetryStatus("");
           toast.error(
@@ -274,19 +275,19 @@ export default function LandingPage({ onLogin }: Props) {
       return;
     }
     setCoordinatorLoading(true);
-    const maxRetries = 8;
+    setCoordinatorRetryStatus("Connecting to server...");
     const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-    let retryActor: Awaited<ReturnType<typeof createActorWithConfig>> | null =
+    const maxRetries = 4;
+    // Create actor once and reuse -- avoids repeated connection overhead
+    let coordActor: Awaited<ReturnType<typeof createActorWithConfig>> | null =
       null;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      setCoordinatorRetryStatus(
-        attempt === 1
-          ? "Connecting to server..."
-          : `Retrying... (${attempt}/${maxRetries})`,
-      );
+      if (attempt > 1) {
+        setCoordinatorRetryStatus(`Retrying... (${attempt}/${maxRetries})`);
+      }
       try {
-        retryActor = await createActorWithConfig();
-        const result = await retryActor.loginCoordinator(
+        if (!coordActor) coordActor = await createActorWithConfig();
+        const result = await coordActor.loginCoordinator(
           cEmail.trim(),
           cPassword.trim(),
         );
@@ -318,9 +319,9 @@ export default function LandingPage({ onLogin }: Props) {
         return;
       } catch (e) {
         console.error(`Coordinator login attempt ${attempt} failed:`, e);
-        retryActor = null;
+        coordActor = null; // reset on error
         if (attempt < maxRetries) {
-          await delay(3000);
+          await delay(1000);
         } else {
           setCoordinatorRetryStatus("");
           setCoordinatorLoading(false);

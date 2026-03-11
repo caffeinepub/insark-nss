@@ -213,13 +213,13 @@ export interface _SERVICE {
   'getVolunteerById' : ActorMethod<[string], Volunteer>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'issueCertificate' : ActorMethod<[string, bigint, boolean], Certificate>,
-  'loginCoordinator' : ActorMethod<[string], [] | [Coordinator]>,
-  'loginVolunteer' : ActorMethod<[string], [] | [Volunteer]>,
+  'loginCoordinator' : ActorMethod<[string, string], [] | [Coordinator]>,
+  'loginVolunteer' : ActorMethod<[string, string], [] | [Volunteer]>,
   'manuallyMarkAttendance' : ActorMethod<[string, string], Attendance>,
   'markAttendance' : ActorMethod<[string], Attendance>,
   'markNotificationAsRead' : ActorMethod<[string], undefined>,
   'registerVolunteer' : ActorMethod<
-    [string, string, string, string, string],
+    [string, string, string, string, string, string],
     Volunteer
   >,
   'respondToFeedback' : ActorMethod<[string, string], Feedback>,
