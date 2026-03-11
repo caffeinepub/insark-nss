@@ -1117,7 +1117,7 @@ actor {
     coordinators.remove(id);
   };
 
-  public query ({ caller }) func getAllCoordinatorsAsAdmin(adminPwd : Text) : async [Coordinator] {
+  public shared ({ caller }) func getAllCoordinatorsAsAdmin(adminPwd : Text) : async [Coordinator] {
     if (adminPwd != adminPassword) {
       Runtime.trap("Unauthorized: Invalid admin password");
     };
@@ -1134,14 +1134,14 @@ actor {
     volunteers.remove(id);
   };
 
-  public query ({ caller }) func getAllVolunteersAsAdmin(adminPwd : Text) : async [Volunteer] {
+  public shared ({ caller }) func getAllVolunteersAsAdmin(adminPwd : Text) : async [Volunteer] {
     if (adminPwd != adminPassword) {
       Runtime.trap("Unauthorized: Invalid admin password");
     };
     volunteers.values().toArray();
   };
 
-  public query ({ caller }) func generateVolunteerHoursSummaryAsAdmin(adminPwd : Text) : async [(Text, Nat)] {
+  public shared ({ caller }) func generateVolunteerHoursSummaryAsAdmin(adminPwd : Text) : async [(Text, Nat)] {
     if (adminPwd != adminPassword) {
       Runtime.trap("Unauthorized: Invalid admin password");
     };
@@ -1149,7 +1149,7 @@ actor {
     volunteers.values().toArray().map<Volunteer, (Text, Nat)>(func(v : Volunteer) { (v.name, v.totalHours) });
   };
 
-  public query ({ caller }) func generateEventAttendanceSummaryAsAdmin(adminPwd : Text, eventId : Text) : async Nat {
+  public shared ({ caller }) func generateEventAttendanceSummaryAsAdmin(adminPwd : Text, eventId : Text) : async Nat {
     if (adminPwd != adminPassword) {
       Runtime.trap("Unauthorized: Invalid admin password");
     };

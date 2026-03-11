@@ -218,7 +218,7 @@ export default function LandingPage({ onLogin }: Props) {
       return;
     }
     setAdminLoading(true);
-    const maxRetries = 5;
+    const maxRetries = 8;
     const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
     // Create actor once and reuse across retries
     let actor: Awaited<ReturnType<typeof createActorWithConfig>> | null = null;
@@ -229,9 +229,7 @@ export default function LandingPage({ onLogin }: Props) {
           : `Retrying... (${attempt}/${maxRetries})`,
       );
       try {
-        if (!actor) {
-          actor = await createActorWithConfig();
-        }
+        actor = await createActorWithConfig();
         const result = await actor.adminLogin(adminPassword);
         if (result === false) {
           setAdminRetryStatus("");
@@ -276,7 +274,7 @@ export default function LandingPage({ onLogin }: Props) {
       return;
     }
     setCoordinatorLoading(true);
-    const maxRetries = 5;
+    const maxRetries = 8;
     const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
     let retryActor: Awaited<ReturnType<typeof createActorWithConfig>> | null =
       null;
@@ -287,9 +285,7 @@ export default function LandingPage({ onLogin }: Props) {
           : `Retrying... (${attempt}/${maxRetries})`,
       );
       try {
-        if (!retryActor) {
-          retryActor = await createActorWithConfig();
-        }
+        retryActor = await createActorWithConfig();
         const result = await retryActor.loginCoordinator(
           cEmail.trim(),
           cPassword.trim(),
