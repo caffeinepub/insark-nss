@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Fonts ─────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Bricolage Grotesque";
+  src: url("/assets/fonts/BricolageGrotesque[opsz,wdth,wght].woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Instrument Serif";
+  src: url("/assets/fonts/InstrumentSerif-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "General Sans";
+  src: url("/assets/fonts/GeneralSans-Variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ── INSARK NSS Design Tokens ───────────────────────────────── */
+@layer base {
+  :root {
+    --radius: 0.5rem;
+
+    /* Core palette: Forest green primary, amber accent, warm neutrals */
+    --background: 0.98 0.004 90;
+    --foreground: 0.18 0.02 140;
+
+    --card: 0.995 0 0;
+    --card-foreground: 0.18 0.02 140;
+
+    --popover: 0.995 0 0;
+    --popover-foreground: 0.18 0.02 140;
+
+    /* Primary: deep forest green */
+    --primary: 0.32 0.09 152;
+    --primary-foreground: 0.99 0 0;
+
+    /* Secondary: sage green */
+    --secondary: 0.92 0.03 145;
+    --secondary-foreground: 0.28 0.07 152;
+
+    /* Muted */
+    --muted: 0.94 0.01 110;
+    --muted-foreground: 0.5 0.02 140;
+
+    /* Accent: saffron/amber */
+    --accent: 0.88 0.12 85;
+    --accent-foreground: 0.2 0.06 50;
+
+    /* Destructive */
+    --destructive: 0.57 0.22 27;
+    --destructive-foreground: 0.99 0 0;
+
+    --border: 0.88 0.015 140;
+    --input: 0.88 0.015 140;
+    --ring: 0.32 0.09 152;
+
+    /* Chart */
+    --chart-1: 0.38 0.12 152;
+    --chart-2: 0.65 0.16 85;
+    --chart-3: 0.5 0.14 200;
+    --chart-4: 0.7 0.17 50;
+    --chart-5: 0.55 0.18 30;
+
+    /* Sidebar: dark forest green */
+    --sidebar: 0.2 0.07 152;
+    --sidebar-foreground: 0.95 0.01 140;
+    --sidebar-primary: 0.78 0.14 85;
+    --sidebar-primary-foreground: 0.15 0.04 50;
+    --sidebar-accent: 0.28 0.08 152;
+    --sidebar-accent-foreground: 0.95 0.01 140;
+    --sidebar-border: 0.28 0.06 152;
+    --sidebar-ring: 0.78 0.14 85;
+
+    /* Status colors */
+    --status-upcoming: 0.55 0.15 240;
+    --status-ongoing: 0.55 0.16 152;
+    --status-completed: 0.45 0.1 140;
+    --status-cancelled: 0.55 0.18 27;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3 {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .sidebar-active {
+    @apply bg-sidebar-accent text-sidebar-accent-foreground font-medium;
+  }
+
+  .glass-card {
+    background: oklch(var(--card) / 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .stat-card {
+    @apply rounded-xl border bg-card p-5 shadow-sm;
+  }
+
+  .page-container {
+    @apply p-6 space-y-6 max-w-7xl mx-auto;
+  }
+
+  .section-header {
+    @apply flex items-center justify-between mb-4;
+  }
+}
