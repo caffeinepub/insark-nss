@@ -181,7 +181,7 @@ actor {
   };
 
   // Admin Portal Functions
-  public query ({ caller }) func adminLogin(password : Text) : async Bool {
+  public shared ({ caller }) func adminLogin(password : Text) : async Bool {
     // No authorization check - this is the authentication mechanism itself
     password == adminPassword;
   };

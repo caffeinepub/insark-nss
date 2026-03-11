@@ -27,11 +27,7 @@ import type { AuthSession } from "../App";
 import { Role } from "../backend";
 import { createActorWithConfig } from "../config";
 import { useActor } from "../hooks/useActor";
-import {
-  useLoginCoordinator,
-  useLoginVolunteer,
-  useRegisterVolunteer,
-} from "../hooks/useQueries";
+import { useLoginVolunteer, useRegisterVolunteer } from "../hooks/useQueries";
 
 interface Props {
   onLogin: (session: AuthSession) => void;
@@ -114,11 +110,12 @@ export default function LandingPage({ onLogin }: Props) {
   const [adminPassword, setAdminPassword] = useState("");
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminRetryStatus, setAdminRetryStatus] = useState("");
+  const [coordinatorLoading, setCoordinatorLoading] = useState(false);
+  const [coordinatorRetryStatus, setCoordinatorRetryStatus] = useState("");
 
   const { actor } = useActor();
   const loginVolunteer = useLoginVolunteer();
   const registerVolunteer = useRegisterVolunteer();
-  const loginCoordinator = useLoginCoordinator();
 
   const handleVolunteerLogin = async () => {
     if (!vEmail.trim()) {
@@ -221,14 +218,21 @@ export default function LandingPage({ onLogin }: Props) {
       return;
     }
     setAdminLoading(true);
-    const maxRetries = 10;
+    const maxRetries = 5;
     const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    // Create actor once and reuse across retries
+    let actor: Awaited<ReturnType<typeof createActorWithConfig>> | null = null;
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
-      setAdminRetryStatus(`Connecting... (attempt ${attempt}/10)`);
+      setAdminRetryStatus(
+        attempt === 1
+          ? "Connecting to server..."
+          : `Retrying... (${attempt}/${maxRetries})`,
+      );
       try {
-        // Clear config cache and create a brand-new actor on every attempt
-        const freshActor = await createActorWithConfig();
-        const result = await freshActor.adminLogin(adminPassword);
+        if (!actor) {
+          actor = await createActorWithConfig();
+        }
+        const result = await actor.adminLogin(adminPassword);
         if (result === false) {
           setAdminRetryStatus("");
           toast.error("Incorrect password. Access denied.");
@@ -248,12 +252,13 @@ export default function LandingPage({ onLogin }: Props) {
         return;
       } catch (e) {
         console.error(`Admin login attempt ${attempt} failed:`, e);
+        actor = null; // reset actor on error so next attempt gets a fresh one
         if (attempt < maxRetries) {
           await delay(3000);
         } else {
           setAdminRetryStatus("");
           toast.error(
-            "Login failed. The server is taking too long to respond. Please wait a moment and try again.",
+            "Unable to reach the server. Please try again in a moment.",
           );
           setAdminLoading(false);
         }
@@ -270,36 +275,64 @@ export default function LandingPage({ onLogin }: Props) {
       toast.error("Please enter your password");
       return;
     }
-    try {
-      const result = await loginCoordinator.mutateAsync({
-        email: cEmail.trim(),
-        password: cPassword.trim(),
-      });
-      if (!result) {
-        toast.error(
-          "Invalid email or password. Please check your credentials.",
+    setCoordinatorLoading(true);
+    const maxRetries = 5;
+    const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    let retryActor: Awaited<ReturnType<typeof createActorWithConfig>> | null =
+      null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      setCoordinatorRetryStatus(
+        attempt === 1
+          ? "Connecting to server..."
+          : `Retrying... (${attempt}/${maxRetries})`,
+      );
+      try {
+        if (!retryActor) {
+          retryActor = await createActorWithConfig();
+        }
+        const result = await retryActor.loginCoordinator(
+          cEmail.trim(),
+          cPassword.trim(),
         );
+        setCoordinatorRetryStatus("");
+        setCoordinatorLoading(false);
+        if (!result) {
+          toast.error(
+            "Invalid email or password. Please check your credentials.",
+          );
+          return;
+        }
+        if (actor) {
+          await actor
+            .saveCallerUserProfile({
+              userId: result.id,
+              name: result.name,
+              role: Role.coordinator,
+              email: result.email,
+            })
+            .catch(() => {});
+        }
+        toast.success(`Welcome, ${result.name}!`);
+        onLogin({
+          role: "coordinator",
+          id: result.id,
+          email: result.email,
+          name: result.name,
+        });
         return;
+      } catch (e) {
+        console.error(`Coordinator login attempt ${attempt} failed:`, e);
+        retryActor = null;
+        if (attempt < maxRetries) {
+          await delay(3000);
+        } else {
+          setCoordinatorRetryStatus("");
+          setCoordinatorLoading(false);
+          toast.error(
+            "Unable to reach the server. Please try again in a moment.",
+          );
+        }
       }
-      if (actor) {
-        await actor
-          .saveCallerUserProfile({
-            userId: result.id,
-            name: result.name,
-            role: Role.coordinator,
-            email: result.email,
-          })
-          .catch(() => {});
-      }
-      toast.success(`Welcome, ${result.name}!`);
-      onLogin({
-        role: "coordinator",
-        id: result.id,
-        email: result.email,
-        name: result.name,
-      });
-    } catch {
-      toast.error("Login failed. Please check your credentials.");
     }
   };
 
@@ -847,14 +880,20 @@ export default function LandingPage({ onLogin }: Props) {
                             data-ocid="auth.coordinator.submit_button"
                             className="w-full font-body"
                             onClick={handleCoordinatorLogin}
-                            disabled={loginCoordinator.isPending}
+                            disabled={coordinatorLoading}
                             style={{ background: "oklch(0.45 0.11 60)" }}
                           >
-                            {loginCoordinator.isPending && (
+                            {coordinatorLoading && (
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             )}
                             Sign In as Coordinator
                           </Button>
+
+                          {coordinatorRetryStatus && (
+                            <p className="text-xs text-center text-muted-foreground animate-pulse">
+                              {coordinatorRetryStatus}
+                            </p>
+                          )}
 
                           <div
                             className="p-3 rounded-lg text-xs text-center font-body"

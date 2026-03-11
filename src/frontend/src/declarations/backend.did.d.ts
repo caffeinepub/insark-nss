@@ -150,7 +150,7 @@ export interface _SERVICE {
   'checkIfVolunteerAttendedEvent' : ActorMethod<[string, string], boolean>,
   'createCoordinator' : ActorMethod<[string, string], Coordinator>,
   'createCoordinatorAsAdmin' : ActorMethod<
-    [string, string, string],
+    [string, string, string, string],
     Coordinator
   >,
   'createEvent' : ActorMethod<

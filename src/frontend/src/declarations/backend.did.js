@@ -169,7 +169,7 @@ export const idlService = IDL.Service({
     ),
   'createCoordinator' : IDL.Func([IDL.Text, IDL.Text], [Coordinator], []),
   'createCoordinatorAsAdmin' : IDL.Func(
-      [IDL.Text, IDL.Text, IDL.Text],
+      [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
       [Coordinator],
       [],
     ),
@@ -478,7 +478,7 @@ export const idlFactory = ({ IDL }) => {
       ),
     'createCoordinator' : IDL.Func([IDL.Text, IDL.Text], [Coordinator], []),
     'createCoordinatorAsAdmin' : IDL.Func(
-        [IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text],
         [Coordinator],
         [],
       ),
