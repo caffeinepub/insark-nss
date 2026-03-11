@@ -29,6 +29,11 @@ interface Config {
 
 let configCache: Config | null = null;
 
+export function clearConfigCache(): void {
+  configCache = null;
+}
+
+
 export async function loadConfig(): Promise<Config> {
   if (configCache) {
     return configCache;

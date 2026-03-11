@@ -664,3 +664,27 @@ export function useSendMessage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["chat"] }),
   });
 }
+
+export function useDeleteVolunteer() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.deleteVolunteer(id);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["volunteers"] }),
+  });
+}
+
+export function useGetMyVolunteerProfile() {
+  const { actor, isFetching } = useActor();
+  return useQuery<Volunteer | null>({
+    queryKey: ["myVolunteerProfile"],
+    queryFn: async () => {
+      if (!actor) return null;
+      return actor.getMyVolunteerProfile();
+    },
+    enabled: !!actor && !isFetching,
+  });
+}

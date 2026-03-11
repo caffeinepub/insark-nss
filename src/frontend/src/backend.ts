@@ -226,6 +226,7 @@ export interface backendInterface {
     deleteCoordinatorAsAdmin(adminPwd: string, id: string): Promise<void>;
     deleteEvent(id: string): Promise<void>;
     deletePhoto(id: string): Promise<void>;
+    deleteVolunteer(id: string): Promise<void>;
     generateEventAttendanceSummary(eventId: string): Promise<bigint>;
     generateEventAttendanceSummaryAsAdmin(adminPwd: string, eventId: string): Promise<bigint>;
     generateVolunteerHoursSummary(): Promise<Array<[string, bigint]>>;
@@ -570,6 +571,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deletePhoto(arg0);
+            return result;
+        }
+    }
+    async deleteVolunteer(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteVolunteer(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteVolunteer(arg0);
             return result;
         }
     }

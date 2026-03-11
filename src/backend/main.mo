@@ -383,6 +383,17 @@ actor {
     };
   };
 
+
+  public shared ({ caller }) func deleteVolunteer(id : Text) : async () {
+    if (not (isAuthenticatedUser(caller))) {
+      Runtime.trap("Unauthorized: Only coordinators can remove volunteers");
+    };
+    if (not volunteers.containsKey(id)) {
+      Runtime.trap("Volunteer not found");
+    };
+    volunteers.remove(id);
+  };
+
   // FIXED: Allow any authenticated user (#user role) to view volunteers -- coordinators have #user role
   public query ({ caller }) func getVolunteerById(id : Text) : async Volunteer {
     if (not (isAuthenticatedUser(caller))) {

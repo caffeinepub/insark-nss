@@ -26,7 +26,6 @@ import {
 } from "../../../hooks/useQueries";
 
 const MAX_DAYS = 6;
-const MS_24H = 24 * 60 * 60 * 1000;
 
 interface VolunteerRow {
   id: string;
@@ -68,15 +67,6 @@ export default function CoordAttendance() {
   const [saving, setSaving] = useState(false);
   const [savingPointIdx, setSavingPointIdx] = useState<number | null>(null);
 
-  // Determine which event columns are unlocked (event date + 24h has passed)
-  const eventUnlocked = useMemo(() => {
-    const now = Date.now();
-    return visibleEvents.map((ev) => {
-      const evDate = ev ? Number(ev.date) : 0;
-      return evDate > 0 && now - evDate >= MS_24H;
-    });
-  }, [visibleEvents]);
-
   const originalSets = useMemo(
     () => [
       buildSet(att0),
@@ -112,7 +102,6 @@ export default function CoordAttendance() {
   }, [volunteers, att0, att1, att2, att3, att4, att5, sh0]);
 
   const toggle = (rowIdx: number, dayIdx: number) => {
-    if (!eventUnlocked[dayIdx]) return;
     setRows((prev) =>
       prev.map((r, i) =>
         i === rowIdx
@@ -159,7 +148,7 @@ export default function CoordAttendance() {
         const ev = visibleEvents[i];
         const shouldBePresent = row.days[i];
         const wasPresent = originalSets[i].has(row.id);
-        if (shouldBePresent && !wasPresent && eventUnlocked[i]) {
+        if (shouldBePresent && !wasPresent) {
           try {
             await markAttendanceMutation.mutateAsync({
               volunteerId: row.id,
@@ -274,18 +263,9 @@ export default function CoordAttendance() {
                             key={visibleEvents[i]?.id ?? `day-col-${i}`}
                             className="font-body font-semibold text-white text-center w-12 border-r border-blue-400"
                           >
-                            <div className="flex flex-col items-center gap-0.5">
-                              <span>
-                                {visibleEvents[i]
-                                  ? visibleEvents[i].title.slice(0, 6)
-                                  : String(i + 1)}
-                              </span>
-                              {visibleEvents[i] && !eventUnlocked[i] && (
-                                <span className="text-xs text-blue-200 font-normal">
-                                  (pending)
-                                </span>
-                              )}
-                            </div>
+                            {visibleEvents[i]
+                              ? visibleEvents[i].title.slice(0, 6)
+                              : String(i + 1)}
                           </TableHead>
                         ))}
                         <TableHead className="font-body font-semibold text-white text-center border-r border-blue-400">
@@ -340,14 +320,8 @@ export default function CoordAttendance() {
                                   <Checkbox
                                     data-ocid={`attendance.checkbox.${rowNum}`}
                                     checked={row.days[dayIdx] ?? false}
-                                    disabled={!eventUnlocked[dayIdx]}
                                     onCheckedChange={() =>
                                       toggle(rowIdx, dayIdx)
-                                    }
-                                    className={
-                                      !eventUnlocked[dayIdx]
-                                        ? "opacity-40 cursor-not-allowed"
-                                        : ""
                                     }
                                   />
                                 ) : (

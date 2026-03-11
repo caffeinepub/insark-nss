@@ -1,3 +1,13 @@
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,6 +37,7 @@ import {
   Pencil,
   Phone,
   Search,
+  Trash2,
   Users,
 } from "lucide-react";
 import { motion } from "motion/react";
@@ -34,6 +45,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { Volunteer } from "../../../backend.d";
 import {
+  useDeleteVolunteer,
   useGetAllVolunteers,
   useGetAttendanceForEvent,
   useGetServiceHoursByVolunteer,
@@ -45,16 +57,20 @@ function VolunteerDetail({
   volunteer,
   onBack,
   setSelectedVolunteer,
+  onDeleted,
 }: {
   volunteer: Volunteer;
   onBack: () => void;
   setSelectedVolunteer: (v: Volunteer) => void;
+  onDeleted: () => void;
 }) {
   const { data: serviceHours, isLoading: loadingHours } =
     useGetServiceHoursByVolunteer(volunteer.id);
   const updateVolunteer = useUpdateVolunteerById();
+  const deleteVolunteer = useDeleteVolunteer();
 
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [form, setForm] = useState({
     name: volunteer.name,
     phone: volunteer.phone,
@@ -87,6 +103,17 @@ function VolunteerDetail({
     } catch {
       toast.error("Failed to update volunteer details");
     }
+  }
+
+  async function handleDelete() {
+    try {
+      await deleteVolunteer.mutateAsync(volunteer.id);
+      toast.success(`${volunteer.name} has been removed`);
+      onDeleted();
+    } catch {
+      toast.error("Failed to remove volunteer");
+    }
+    setDeleteOpen(false);
   }
 
   return (
@@ -129,16 +156,28 @@ function VolunteerDetail({
                   </div>
                 </div>
               </div>
-              <Button
-                data-ocid="volunteer_edit.open_modal_button"
-                variant="outline"
-                size="sm"
-                onClick={handleEditOpen}
-                className="flex items-center gap-2 font-body"
-              >
-                <Pencil className="w-4 h-4" />
-                Edit Details
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  data-ocid="volunteer_edit.open_modal_button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEditOpen}
+                  className="flex items-center gap-2 font-body"
+                >
+                  <Pencil className="w-4 h-4" />
+                  Edit Details
+                </Button>
+                <Button
+                  data-ocid="volunteer_delete.open_modal_button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDeleteOpen(true)}
+                  className="flex items-center gap-2 font-body text-red-600 border-red-200 hover:bg-red-50"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Remove
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -353,6 +392,38 @@ function VolunteerDetail({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent data-ocid="volunteer_delete.dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display">
+              Remove Volunteer
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-body">
+              Are you sure you want to remove <strong>{volunteer.name}</strong>?
+              This will permanently delete their account and all associated
+              records.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              data-ocid="volunteer_delete.cancel_button"
+              className="font-body"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              data-ocid="volunteer_delete.confirm_button"
+              onClick={handleDelete}
+              disabled={deleteVolunteer.isPending}
+              className="font-body bg-red-600 hover:bg-red-700"
+            >
+              {deleteVolunteer.isPending ? "Removing..." : "Remove Volunteer"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -370,6 +441,7 @@ export default function CoordVolunteers() {
         volunteer={selectedVolunteer}
         onBack={() => setSelectedVolunteer(null)}
         setSelectedVolunteer={setSelectedVolunteer}
+        onDeleted={() => setSelectedVolunteer(null)}
       />
     );
   }

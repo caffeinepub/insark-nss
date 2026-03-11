@@ -13,6 +13,7 @@ import { motion } from "motion/react";
 import type { AuthSession } from "../../../App";
 import {
   useGetMyTotalServiceHours,
+  useGetMyVolunteerProfile,
   useGetUnreadNotificationCount,
   useGetUpcomingEvents,
 } from "../../../hooks/useQueries";
@@ -29,18 +30,22 @@ export default function VolunteerDashboardHome({ session, onNavigate }: Props) {
   const { data: totalHours, isLoading: loadingHours } =
     useGetMyTotalServiceHours();
   const { data: unreadCount } = useGetUnreadNotificationCount();
+  // Always fetch fresh profile so coordinator updates (name, dept, etc.) are reflected
+  const { data: liveProfile } = useGetMyVolunteerProfile();
+
+  const displayName = liveProfile?.name ?? session.name;
 
   const stats = [
     {
       label: "Upcoming Events",
-      value: loadingEvents ? "—" : String(upcomingEvents?.length ?? 0),
+      value: loadingEvents ? "\u2014" : String(upcomingEvents?.length ?? 0),
       icon: Calendar,
       color: "oklch(0.55 0.15 240)",
       bg: "oklch(0.93 0.04 240)",
     },
     {
       label: "Total Service Hours",
-      value: loadingHours ? "—" : String(Number(totalHours ?? BigInt(0))),
+      value: loadingHours ? "\u2014" : String(Number(totalHours ?? BigInt(0))),
       icon: Clock,
       color: "oklch(0.38 0.1 152)",
       bg: "oklch(0.92 0.03 145)",
@@ -63,11 +68,21 @@ export default function VolunteerDashboardHome({ session, onNavigate }: Props) {
         transition={{ duration: 0.4 }}
       >
         <h1 className="text-2xl font-display font-bold text-foreground">
-          Welcome, {session.name}!
+          Welcome, {displayName}!
         </h1>
         <p className="text-muted-foreground font-body text-sm mt-1">
           Here's your NSS activity overview
         </p>
+        {liveProfile && (
+          <div className="flex flex-wrap gap-2 mt-2">
+            <span className="text-xs font-body text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              {liveProfile.department}
+            </span>
+            <span className="text-xs font-body text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+              {liveProfile.rollNumber}
+            </span>
+          </div>
+        )}
       </motion.div>
 
       {/* Stats */}

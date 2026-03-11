@@ -23,7 +23,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { AuthSession } from "../App";
 import { Role } from "../backend";
-import { createActorWithConfig } from "../config";
+import { clearConfigCache, createActorWithConfig } from "../config";
 import { useActor } from "../hooks/useActor";
 import {
   useLoginCoordinator,
@@ -151,34 +151,40 @@ export default function LandingPage({ onLogin }: Props) {
       return;
     }
     setAdminLoading(true);
-    try {
-      // Always create a fresh actor for admin login to avoid stale cache issues
-      const freshActor = actor ?? (await createActorWithConfig());
-      let result = false;
+    const maxRetries = 5;
+    const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        result = await freshActor.adminLogin(adminPassword);
-      } catch {
-        // Backend call failed - try once more with a brand new actor
-        const retryActor = await createActorWithConfig();
-        result = await retryActor.adminLogin(adminPassword);
-      }
-      if (!result) {
-        toast.error("Incorrect password. Access denied.");
+        // Clear config cache and create a brand-new actor on every attempt
+        clearConfigCache();
+        const freshActor = await createActorWithConfig();
+        const result = await freshActor.adminLogin(adminPassword);
+        if (!result) {
+          toast.error("Incorrect password. Access denied.");
+          setAdminLoading(false);
+          return;
+        }
+        toast.success("Welcome, Administrator!");
+        onLogin({
+          role: "admin",
+          id: "",
+          email: "",
+          name: "Admin",
+          adminPassword: adminPassword,
+        });
+        setAdminLoading(false);
         return;
+      } catch (e) {
+        console.error(`Admin login attempt ${attempt} failed:`, e);
+        if (attempt < maxRetries) {
+          await delay(800 * attempt);
+        } else {
+          toast.error(
+            "Login failed. The server is taking too long to respond. Please wait a moment and try again.",
+          );
+          setAdminLoading(false);
+        }
       }
-      toast.success("Welcome, Administrator!");
-      onLogin({
-        role: "admin",
-        id: "",
-        email: "",
-        name: "Admin",
-        adminPassword: adminPassword,
-      });
-    } catch (e) {
-      console.error("Admin login error:", e);
-      toast.error("Login failed. Please check your password and try again.");
-    } finally {
-      setAdminLoading(false);
     }
   };
 
