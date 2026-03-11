@@ -198,6 +198,32 @@ export function useLoginCoordinator() {
   });
 }
 
+export function useUpdateVolunteerById() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      id: string;
+      name: string;
+      phone: string;
+      department: string;
+      rollNumber: string;
+    }) => {
+      if (!actor) throw new Error("Actor not ready");
+      return actor.updateVolunteerById(
+        params.id,
+        params.name,
+        params.phone,
+        params.department,
+        params.rollNumber,
+      );
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["volunteers"] });
+    },
+  });
+}
+
 export function useSaveCallerUserProfile() {
   const { actor } = useActor();
   return useMutation({

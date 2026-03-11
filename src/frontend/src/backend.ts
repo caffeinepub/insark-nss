@@ -274,6 +274,7 @@ export interface backendInterface {
     submitFeedback(eventId: EventId | null, message: string): Promise<Feedback>;
     updateEvent(id: string, title: string, eventType: string, requiredHours: bigint, createdBy: CoordinatorId, status: string, date: bigint, time: bigint, location: string, description: string): Promise<Event>;
     updateVolunteerProfile(name: string, phone: string, department: string): Promise<Volunteer>;
+    updateVolunteerById(id: string, name: string, phone: string, department: string, rollNumber: string): Promise<Volunteer>;
 }
 import type { Coordinator as _Coordinator, EventId as _EventId, ExternalBlob as _ExternalBlob, Feedback as _Feedback, FeedbackId as _FeedbackId, Photo as _Photo, PhotoId as _PhotoId, Role as _Role, UserProfile as _UserProfile, UserRole as _UserRole, Volunteer as _Volunteer, VolunteerId as _VolunteerId, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -1241,6 +1242,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateVolunteerProfile(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async updateVolunteerById(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string): Promise<Volunteer> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.updateVolunteerById(arg0, arg1, arg2, arg3, arg4);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.updateVolunteerById(arg0, arg1, arg2, arg3, arg4);
             return result;
         }
     }

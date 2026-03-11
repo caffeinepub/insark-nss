@@ -1,6 +1,15 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -15,27 +24,70 @@ import {
   ChevronRight,
   Clock,
   Mail,
+  Pencil,
   Phone,
   Search,
   Users,
-  X,
 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { toast } from "sonner";
 import type { Volunteer } from "../../../backend.d";
 import {
   useGetAllVolunteers,
   useGetAttendanceForEvent,
   useGetServiceHoursByVolunteer,
+  useUpdateVolunteerById,
 } from "../../../hooks/useQueries";
 import { formatDate } from "../../../lib/helpers";
 
 function VolunteerDetail({
   volunteer,
   onBack,
-}: { volunteer: Volunteer; onBack: () => void }) {
+  setSelectedVolunteer,
+}: {
+  volunteer: Volunteer;
+  onBack: () => void;
+  setSelectedVolunteer: (v: Volunteer) => void;
+}) {
   const { data: serviceHours, isLoading: loadingHours } =
     useGetServiceHoursByVolunteer(volunteer.id);
+  const updateVolunteer = useUpdateVolunteerById();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [form, setForm] = useState({
+    name: volunteer.name,
+    phone: volunteer.phone,
+    department: volunteer.department,
+    rollNumber: volunteer.rollNumber,
+  });
+
+  function handleEditOpen() {
+    setForm({
+      name: volunteer.name,
+      phone: volunteer.phone,
+      department: volunteer.department,
+      rollNumber: volunteer.rollNumber,
+    });
+    setEditOpen(true);
+  }
+
+  async function handleSave() {
+    try {
+      const updated = await updateVolunteer.mutateAsync({
+        id: volunteer.id,
+        name: form.name,
+        phone: form.phone,
+        department: form.department,
+        rollNumber: form.rollNumber,
+      });
+      setSelectedVolunteer(updated);
+      setEditOpen(false);
+      toast.success("Volunteer details updated successfully");
+    } catch {
+      toast.error("Failed to update volunteer details");
+    }
+  }
 
   return (
     <div className="page-container">
@@ -52,29 +104,41 @@ function VolunteerDetail({
       >
         <Card className="shadow-card">
           <CardHeader>
-            <div className="flex items-start gap-4">
-              <div
-                className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-display font-bold flex-shrink-0"
-                style={{
-                  background: "oklch(0.92 0.03 145)",
-                  color: "oklch(0.28 0.09 152)",
-                }}
-              >
-                {volunteer.name.charAt(0).toUpperCase()}
-              </div>
-              <div>
-                <CardTitle className="text-xl font-display">
-                  {volunteer.name}
-                </CardTitle>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  <Badge variant="secondary" className="font-body text-xs">
-                    {volunteer.department}
-                  </Badge>
-                  <Badge variant="outline" className="font-body text-xs">
-                    {volunteer.rollNumber}
-                  </Badge>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start gap-4">
+                <div
+                  className="w-16 h-16 rounded-full flex items-center justify-center text-2xl font-display font-bold flex-shrink-0"
+                  style={{
+                    background: "oklch(0.92 0.03 145)",
+                    color: "oklch(0.28 0.09 152)",
+                  }}
+                >
+                  {volunteer.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-display">
+                    {volunteer.name}
+                  </CardTitle>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <Badge variant="secondary" className="font-body text-xs">
+                      {volunteer.department}
+                    </Badge>
+                    <Badge variant="outline" className="font-body text-xs">
+                      {volunteer.rollNumber}
+                    </Badge>
+                  </div>
                 </div>
               </div>
+              <Button
+                data-ocid="volunteer_edit.open_modal_button"
+                variant="outline"
+                size="sm"
+                onClick={handleEditOpen}
+                className="flex items-center gap-2 font-body"
+              >
+                <Pencil className="w-4 h-4" />
+                Edit Details
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -189,6 +253,106 @@ function VolunteerDetail({
           </CardContent>
         </Card>
       </motion.div>
+
+      {/* Edit Volunteer Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent
+          data-ocid="volunteer_edit.dialog"
+          className="sm:max-w-md"
+        >
+          <DialogHeader>
+            <DialogTitle className="font-display">
+              Edit Volunteer Details
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-name" className="font-body text-sm">
+                Full Name
+              </Label>
+              <Input
+                id="edit-name"
+                data-ocid="volunteer_edit.name_input"
+                value={form.name}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, name: e.target.value }))
+                }
+                className="font-body"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-phone" className="font-body text-sm">
+                Phone
+              </Label>
+              <Input
+                id="edit-phone"
+                data-ocid="volunteer_edit.phone_input"
+                value={form.phone}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, phone: e.target.value }))
+                }
+                className="font-body"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-department" className="font-body text-sm">
+                Department / Branch
+              </Label>
+              <Input
+                id="edit-department"
+                data-ocid="volunteer_edit.department_input"
+                value={form.department}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, department: e.target.value }))
+                }
+                className="font-body"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="edit-rollnumber" className="font-body text-sm">
+                Roll Number
+              </Label>
+              <Input
+                id="edit-rollnumber"
+                data-ocid="volunteer_edit.rollnumber_input"
+                value={form.rollNumber}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, rollNumber: e.target.value }))
+                }
+                className="font-body"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="font-body text-sm text-muted-foreground">
+                Email (read-only)
+              </Label>
+              <Input
+                value={volunteer.email}
+                disabled
+                className="font-body bg-muted/40"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              data-ocid="volunteer_edit.cancel_button"
+              variant="outline"
+              onClick={() => setEditOpen(false)}
+              className="font-body"
+            >
+              Cancel
+            </Button>
+            <Button
+              data-ocid="volunteer_edit.save_button"
+              onClick={handleSave}
+              disabled={updateVolunteer.isPending}
+              className="font-body"
+            >
+              {updateVolunteer.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -205,6 +369,7 @@ export default function CoordVolunteers() {
       <VolunteerDetail
         volunteer={selectedVolunteer}
         onBack={() => setSelectedVolunteer(null)}
+        setSelectedVolunteer={setSelectedVolunteer}
       />
     );
   }

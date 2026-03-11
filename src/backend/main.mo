@@ -358,6 +358,31 @@ actor {
     };
   };
 
+  // Coordinator can update any volunteer's details by ID
+  public shared ({ caller }) func updateVolunteerById(id : Text, name : Text, phone : Text, department : Text, rollNumber : Text) : async Volunteer {
+    if (not (isAuthenticatedUser(caller))) {
+      Runtime.trap("Unauthorized: Only coordinators can update volunteer details");
+    };
+    let volunteer = volunteers.get(id);
+    switch (volunteer) {
+      case (null) { Runtime.trap("Volunteer not found") };
+      case (?v) {
+        let updated : Volunteer = {
+          id = v.id;
+          name;
+          email = v.email;
+          rollNumber;
+          department;
+          phone;
+          totalHours = v.totalHours;
+          joinedAt = v.joinedAt;
+        };
+        volunteers.add(v.id, updated);
+        updated;
+      };
+    };
+  };
+
   // FIXED: Allow any authenticated user (#user role) to view volunteers -- coordinators have #user role
   public query ({ caller }) func getVolunteerById(id : Text) : async Volunteer {
     if (not (isAuthenticatedUser(caller))) {

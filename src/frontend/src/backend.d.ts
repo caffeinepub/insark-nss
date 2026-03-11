@@ -180,5 +180,6 @@ export interface backendInterface {
     sendMessage(message: string): Promise<ChatMessage>;
     submitFeedback(eventId: EventId | null, message: string): Promise<Feedback>;
     updateEvent(id: string, title: string, eventType: string, requiredHours: bigint, createdBy: CoordinatorId, status: string, date: bigint, time: bigint, location: string, description: string): Promise<Event>;
+    updateVolunteerById(id: string, name: string, phone: string, department: string, rollNumber: string): Promise<Volunteer>;
     updateVolunteerProfile(name: string, phone: string, department: string): Promise<Volunteer>;
 }
