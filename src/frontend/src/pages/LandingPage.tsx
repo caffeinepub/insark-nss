@@ -23,7 +23,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { AuthSession } from "../App";
 import { Role } from "../backend";
-import { clearConfigCache, createActorWithConfig } from "../config";
+import { createActorWithConfig } from "../config";
 import { useActor } from "../hooks/useActor";
 import {
   useLoginCoordinator,
@@ -59,6 +59,7 @@ export default function LandingPage({ onLogin }: Props) {
   // Admin login
   const [adminPassword, setAdminPassword] = useState("");
   const [adminLoading, setAdminLoading] = useState(false);
+  const [adminRetryStatus, setAdminRetryStatus] = useState("");
 
   const { actor } = useActor();
   const loginVolunteer = useLoginVolunteer();
@@ -151,19 +152,21 @@ export default function LandingPage({ onLogin }: Props) {
       return;
     }
     setAdminLoading(true);
-    const maxRetries = 5;
+    const maxRetries = 10;
     const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      setAdminRetryStatus(`Connecting... (attempt ${attempt}/10)`);
       try {
         // Clear config cache and create a brand-new actor on every attempt
-        clearConfigCache();
         const freshActor = await createActorWithConfig();
         const result = await freshActor.adminLogin(adminPassword);
-        if (!result) {
+        if (result === false) {
+          setAdminRetryStatus("");
           toast.error("Incorrect password. Access denied.");
           setAdminLoading(false);
           return;
         }
+        setAdminRetryStatus("");
         toast.success("Welcome, Administrator!");
         onLogin({
           role: "admin",
@@ -177,8 +180,9 @@ export default function LandingPage({ onLogin }: Props) {
       } catch (e) {
         console.error(`Admin login attempt ${attempt} failed:`, e);
         if (attempt < maxRetries) {
-          await delay(800 * attempt);
+          await delay(3000);
         } else {
+          setAdminRetryStatus("");
           toast.error(
             "Login failed. The server is taking too long to respond. Please wait a moment and try again.",
           );
@@ -756,6 +760,7 @@ export default function LandingPage({ onLogin }: Props) {
                             onClick={() => {
                               setMode("choice");
                               setAdminPassword("");
+                              setAdminRetryStatus("");
                             }}
                             className="text-muted-foreground hover:text-foreground text-sm font-body underline w-fit mb-1"
                           >
@@ -809,6 +814,11 @@ export default function LandingPage({ onLogin }: Props) {
                             )}
                             Sign In as Admin
                           </Button>
+                          {adminRetryStatus && (
+                            <p className="text-center text-xs font-body text-muted-foreground animate-pulse">
+                              {adminRetryStatus}
+                            </p>
+                          )}
                         </CardContent>
                       </Card>
                     </motion.div>
@@ -817,25 +827,6 @@ export default function LandingPage({ onLogin }: Props) {
               </motion.div>
             </div>
           </div>
-
-          {/* Footer */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="text-center text-xs font-body mt-8"
-            style={{ color: "oklch(0.78 0 0 / 0.5)" }}
-          >
-            © {new Date().getFullYear()}.{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:opacity-80 transition-opacity"
-            >
-              Built with love using caffeine.ai
-            </a>
-          </motion.div>
         </div>
       </div>
     </div>
