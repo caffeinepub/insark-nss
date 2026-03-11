@@ -1,9 +1,12 @@
 import { Toaster } from "@/components/ui/sonner";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createActorWithConfig } from "./config";
+import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import LandingPage from "./pages/LandingPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CoordinatorDashboard from "./pages/coordinator/CoordinatorDashboard";
 import VolunteerDashboard from "./pages/volunteer/VolunteerDashboard";
+import { getSecretParameter } from "./utils/urlParams";
 
 export type UserRole = "volunteer" | "coordinator" | "admin";
 
@@ -35,15 +38,41 @@ export function clearSession() {
   localStorage.removeItem(SESSION_KEY);
 }
 
+// Silently re-establishes the backend session (role assignment) after page
+// reload or canister upgrade when the frontend already has a stored session.
+async function silentReAuth(session: AuthSession): Promise<void> {
+  try {
+    if (session.role === "admin") return;
+    const actor = await createActorWithConfig();
+    const adminToken = getSecretParameter("caffeineAdminToken") || "";
+    await actor._initializeAccessControlWithSecret(adminToken);
+    if (session.role === "volunteer") {
+      await actor.loginVolunteer(session.email);
+    } else if (session.role === "coordinator") {
+      await actor.loginCoordinator(session.email);
+    }
+  } catch {
+    // Silent -- do not break the app if re-auth fails
+  }
+}
+
 export default function App() {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const reAuthed = useRef(false);
 
   useEffect(() => {
     const stored = getSession();
     setSession(stored);
     setInitialized(true);
   }, []);
+
+  // Silently re-login to backend on startup to re-establish roles lost after redeployment.
+  useEffect(() => {
+    if (!initialized || !session || reAuthed.current) return;
+    reAuthed.current = true;
+    silentReAuth(session);
+  }, [initialized, session]);
 
   if (!initialized) {
     return (
@@ -61,11 +90,13 @@ export default function App() {
   const handleLogin = (sess: AuthSession) => {
     saveSession(sess);
     setSession(sess);
+    reAuthed.current = false;
   };
 
   const handleLogout = () => {
     clearSession();
     setSession(null);
+    reAuthed.current = false;
   };
 
   if (!session) {

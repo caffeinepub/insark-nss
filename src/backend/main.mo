@@ -162,6 +162,21 @@ actor {
     prefix # idCounter.toText();
   };
 
+  // Helper: checks ephemeral role store AND stable userProfiles -- survives canister upgrades
+  func isAuthenticatedUser(caller : Principal) : Bool {
+    if (AccessControl.hasPermission(accessControlState, caller, #user)) {
+      return true;
+    };
+    // If profile exists in stable map, re-assign role so future calls also pass
+    switch (userProfiles.get(caller)) {
+      case (null) { false };
+      case (?_) {
+        accessControlState.userRoles.add(caller, #user);
+        true;
+      };
+    };
+  };
+
   // Admin Portal Functions
   public query ({ caller }) func adminLogin(password : Text) : async Bool {
     // No authorization check - this is the authentication mechanism itself
@@ -205,7 +220,7 @@ actor {
 
   // User Profile Functions (Required by frontend)
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only users can view profiles");
     };
     userProfiles.get(caller);
@@ -219,7 +234,7 @@ actor {
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only users can save profiles");
     };
     userProfiles.add(caller, profile);
@@ -299,7 +314,7 @@ actor {
   };
 
   public query ({ caller }) func getMyVolunteerProfile() : async ?Volunteer {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated users can view their profile");
     };
 
@@ -313,7 +328,7 @@ actor {
   };
 
   public shared ({ caller }) func updateVolunteerProfile(name : Text, phone : Text, department : Text) : async Volunteer {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated users can update their profile");
     };
 
@@ -345,7 +360,7 @@ actor {
 
   // FIXED: Allow any authenticated user (#user role) to view volunteers -- coordinators have #user role
   public query ({ caller }) func getVolunteerById(id : Text) : async Volunteer {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can view volunteer details");
     };
 
@@ -358,7 +373,7 @@ actor {
 
   // FIXED: Allow any authenticated user (#user role) to list volunteers -- coordinators have #user role
   public query ({ caller }) func getAllVolunteers() : async [Volunteer] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can view all volunteers");
     };
     volunteers.values().toArray();
@@ -367,7 +382,7 @@ actor {
   // Coordinator Functions
   // FIXED: Allow any authenticated user (#user role) to view coordinator details
   public query ({ caller }) func getCoordinator(id : Text) : async Coordinator {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can view coordinator details");
     };
 
@@ -379,7 +394,7 @@ actor {
 
   // FIXED: Allow any authenticated user (#user role) to list coordinators
   public query ({ caller }) func getAllCoordinators() : async [Coordinator] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can view all coordinators");
     };
     coordinators.values().toArray();
@@ -397,7 +412,7 @@ actor {
     location : Text,
     description : Text,
   ) : async Event {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can create events");
     };
 
@@ -430,7 +445,7 @@ actor {
     location : Text,
     description : Text,
   ) : async Event {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can update events");
     };
 
@@ -457,7 +472,7 @@ actor {
   };
 
   public shared ({ caller }) func deleteEvent(id : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can delete events");
     };
 
@@ -488,7 +503,7 @@ actor {
 
   // Attendance Functions
   public shared ({ caller }) func markAttendance(eventId : Text) : async Attendance {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated volunteers can mark attendance");
     };
 
@@ -515,7 +530,7 @@ actor {
   };
 
   public shared ({ caller }) func manuallyMarkAttendance(volunteerId : Text, eventId : Text) : async Attendance {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can manually mark attendance");
     };
 
@@ -538,7 +553,7 @@ actor {
   };
 
   public query ({ caller }) func getAttendanceForEvent(eventId : Text) : async [Attendance] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can view event attendance");
     };
 
@@ -546,7 +561,7 @@ actor {
   };
 
   public query ({ caller }) func getMyAttendance() : async [Attendance] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated users can view their attendance");
     };
 
@@ -560,7 +575,7 @@ actor {
   };
 
   public query ({ caller }) func checkIfVolunteerAttendedEvent(volunteerId : Text, eventId : Text) : async Bool {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       let profile = userProfiles.get(caller);
       switch (profile) {
         case (null) { Runtime.trap("Unauthorized") };
@@ -579,7 +594,7 @@ actor {
 
   // Service Hours Functions
   public shared ({ caller }) func addServiceHours(volunteerId : Text, eventId : Text, hours : Nat, date : Int) : async ServiceHours {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can add service hours");
     };
 
@@ -616,7 +631,7 @@ actor {
   };
 
   public query ({ caller }) func getServiceHoursByVolunteer(volunteerId : Text) : async [ServiceHours] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       let profile = userProfiles.get(caller);
       switch (profile) {
         case (null) { Runtime.trap("Unauthorized") };
@@ -632,7 +647,7 @@ actor {
   };
 
   public query ({ caller }) func getAllServiceHoursForEvent(eventId : Text) : async [ServiceHours] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can view all service hours for an event");
     };
 
@@ -640,7 +655,7 @@ actor {
   };
 
   public query ({ caller }) func getMyTotalServiceHours() : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated users can view their total hours");
     };
 
@@ -669,7 +684,7 @@ actor {
 
   // Photo Functions
   public shared ({ caller }) func addPhoto(eventId : Text, title : Text, blobId : Storage.ExternalBlob) : async Photo {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can add photos");
     };
 
@@ -686,7 +701,7 @@ actor {
   };
 
   public shared ({ caller }) func deletePhoto(id : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can delete photos");
     };
 
@@ -708,7 +723,7 @@ actor {
 
   // Certificate Functions
   public shared ({ caller }) func issueCertificate(volunteerId : Text, hoursCompleted : Nat, downloadable : Bool) : async Certificate {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can issue certificates");
     };
 
@@ -725,7 +740,7 @@ actor {
   };
 
   public query ({ caller }) func getMyCertificates() : async [Certificate] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated users can view their certificates");
     };
 
@@ -739,7 +754,7 @@ actor {
   };
 
   public query ({ caller }) func getCertificatesByVolunteer(volunteerId : Text) : async [Certificate] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       let profile = userProfiles.get(caller);
       switch (profile) {
         case (null) { Runtime.trap("Unauthorized") };
@@ -755,7 +770,7 @@ actor {
   };
 
   public query ({ caller }) func getAllCertificates() : async [Certificate] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can view all certificates");
     };
     certificates.values().toArray();
@@ -763,7 +778,7 @@ actor {
 
   // Feedback Functions
   public shared ({ caller }) func submitFeedback(eventId : ?EventId, message : Text) : async Feedback {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated volunteers can submit feedback");
     };
 
@@ -788,7 +803,7 @@ actor {
   };
 
   public query ({ caller }) func getMyFeedback() : async [Feedback] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated users can view their feedback");
     };
 
@@ -802,14 +817,14 @@ actor {
   };
 
   public query ({ caller }) func getAllFeedback() : async [Feedback] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can view all feedback");
     };
     feedbacks.values().toArray();
   };
 
   public shared ({ caller }) func respondToFeedback(id : Text, response : Text) : async Feedback {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can respond to feedback");
     };
 
@@ -834,7 +849,7 @@ actor {
 
   // Notification Functions
   public shared ({ caller }) func createNotification(title : Text, message : Text, targetAll : Bool) : async Notification {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can create notifications");
     };
 
@@ -858,14 +873,14 @@ actor {
   };
 
   public query ({ caller }) func getAllNotifications() : async [Notification] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated users can view notifications");
     };
     notifications.values().toArray();
   };
 
   public shared ({ caller }) func markNotificationAsRead(notificationId : Text) : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated users can mark notifications as read");
     };
 
@@ -891,7 +906,7 @@ actor {
   };
 
   public query ({ caller }) func getUnreadNotificationCount() : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated users can view unread notification count");
     };
 
@@ -911,7 +926,7 @@ actor {
 
   // Reporting Functions
   public query ({ caller }) func generateVolunteerHoursSummary() : async [(Text, Nat)] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can generate reports");
     };
 
@@ -919,7 +934,7 @@ actor {
   };
 
   public query ({ caller }) func generateEventAttendanceSummary(eventId : Text) : async Nat {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can generate reports");
     };
 
@@ -928,7 +943,7 @@ actor {
 
   // Seed Data Function
   public shared ({ caller }) func seedSampleData() : async () {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can seed data");
     };
 
@@ -958,7 +973,7 @@ actor {
 
   // Chat Functions
   public shared ({ caller }) func sendMessage(message : Text) : async ChatMessage {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated users can send messages");
     };
 
@@ -985,7 +1000,7 @@ actor {
   };
 
   public query ({ caller }) func getChatMessages() : async [ChatMessage] {
-    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+    if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only authenticated users can view chat messages");
     };
     chatMessages.values().toArray();
