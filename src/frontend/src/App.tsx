@@ -47,9 +47,9 @@ async function silentReAuth(session: AuthSession): Promise<void> {
     const adminToken = getSecretParameter("caffeineAdminToken") || "";
     await actor._initializeAccessControlWithSecret(adminToken);
     if (session.role === "volunteer") {
-      await actor.loginVolunteer(session.email);
+      await actor.loginVolunteer(session.email, "");
     } else if (session.role === "coordinator") {
-      await actor.loginCoordinator(session.email);
+      await actor.loginCoordinator(session.email, "");
     }
   } catch {
     // Silent -- do not break the app if re-auth fails

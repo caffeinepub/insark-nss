@@ -14,6 +14,8 @@ import {
   Bell,
   CalendarCheck,
   ChevronRight,
+  Eye,
+  EyeOff,
   Loader2,
   Shield,
   Users,
@@ -37,6 +39,49 @@ interface Props {
 
 type AuthMode = "choice" | "volunteer" | "coordinator" | "admin";
 
+function PasswordInput({
+  id,
+  dataOcid,
+  placeholder,
+  value,
+  onChange,
+  onKeyDown,
+  className,
+}: {
+  id?: string;
+  dataOcid?: string;
+  placeholder?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  className?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        id={id}
+        data-ocid={dataOcid}
+        type={show ? "text" : "password"}
+        placeholder={placeholder}
+        value={value}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        className={`pr-10 ${className ?? ""}`}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setShow((s) => !s)}
+        aria-label={show ? "Hide password" : "Show password"}
+      >
+        {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+      </button>
+    </div>
+  );
+}
+
 export default function LandingPage({ onLogin }: Props) {
   const [mode, setMode] = useState<AuthMode>("choice");
   const [volunteerTab, setVolunteerTab] = useState<"login" | "register">(
@@ -52,6 +97,15 @@ export default function LandingPage({ onLogin }: Props) {
   const [regRoll, setRegRoll] = useState("");
   const [regDept, setRegDept] = useState("");
   const [regPhone, setRegPhone] = useState("");
+
+  // Volunteer login password
+  const [vPassword, setVPassword] = useState("");
+
+  // Volunteer register password
+  const [regPassword, setRegPassword] = useState("");
+
+  // Coordinator login password
+  const [cPassword, setCPassword] = useState("");
 
   // Coordinator login
   const [cEmail, setCEmail] = useState("");
@@ -71,10 +125,19 @@ export default function LandingPage({ onLogin }: Props) {
       toast.error("Please enter your email");
       return;
     }
+    if (!vPassword.trim()) {
+      toast.error("Please enter your password");
+      return;
+    }
     try {
-      const result = await loginVolunteer.mutateAsync(vEmail.trim());
+      const result = await loginVolunteer.mutateAsync({
+        email: vEmail.trim(),
+        password: vPassword.trim(),
+      });
       if (!result) {
-        toast.error("Volunteer not found. Please register first.");
+        toast.error(
+          "Invalid email or password. Please check your credentials.",
+        );
         return;
       }
       // Save user profile
@@ -106,9 +169,14 @@ export default function LandingPage({ onLogin }: Props) {
       !regEmail.trim() ||
       !regRoll.trim() ||
       !regDept.trim() ||
-      !regPhone.trim()
+      !regPhone.trim() ||
+      !regPassword.trim()
     ) {
       toast.error("Please fill in all fields");
+      return;
+    }
+    if (regPassword.trim().length < 6) {
+      toast.error("Password must be at least 6 characters");
       return;
     }
     try {
@@ -118,6 +186,7 @@ export default function LandingPage({ onLogin }: Props) {
         rollNumber: regRoll.trim(),
         department: regDept.trim(),
         phone: regPhone.trim(),
+        password: regPassword.trim(),
       });
       if (actor) {
         await actor
@@ -197,10 +266,19 @@ export default function LandingPage({ onLogin }: Props) {
       toast.error("Please enter your email");
       return;
     }
+    if (!cPassword.trim()) {
+      toast.error("Please enter your password");
+      return;
+    }
     try {
-      const result = await loginCoordinator.mutateAsync(cEmail.trim());
+      const result = await loginCoordinator.mutateAsync({
+        email: cEmail.trim(),
+        password: cPassword.trim(),
+      });
       if (!result) {
-        toast.error("Coordinator account not found.");
+        toast.error(
+          "Invalid email or password. Please check your credentials.",
+        );
         return;
       }
       if (actor) {
@@ -561,6 +639,25 @@ export default function LandingPage({ onLogin }: Props) {
                                   className="mt-1 font-body"
                                 />
                               </div>
+                              <div>
+                                <Label
+                                  htmlFor="v-password"
+                                  className="font-body text-sm"
+                                >
+                                  Password
+                                </Label>
+                                <PasswordInput
+                                  id="v-password"
+                                  dataOcid="auth.volunteer.password_input"
+                                  placeholder="Enter your password"
+                                  value={vPassword}
+                                  onChange={(e) => setVPassword(e.target.value)}
+                                  onKeyDown={(e) =>
+                                    e.key === "Enter" && handleVolunteerLogin()
+                                  }
+                                  className="mt-1 font-body"
+                                />
+                              </div>
                               <Button
                                 data-ocid="auth.volunteer.submit_button"
                                 className="w-full font-body"
@@ -646,6 +743,20 @@ export default function LandingPage({ onLogin }: Props) {
                                   />
                                 </div>
                               </div>
+                              <div>
+                                <Label className="font-body text-sm">
+                                  Password
+                                </Label>
+                                <PasswordInput
+                                  dataOcid="auth.register.password_input"
+                                  placeholder="Min 6 characters"
+                                  value={regPassword}
+                                  onChange={(e) =>
+                                    setRegPassword(e.target.value)
+                                  }
+                                  className="mt-1 font-body"
+                                />
+                              </div>
                               <Button
                                 data-ocid="auth.register_button"
                                 className="w-full font-body"
@@ -707,6 +818,25 @@ export default function LandingPage({ onLogin }: Props) {
                               placeholder="coordinator@institution.edu"
                               value={cEmail}
                               onChange={(e) => setCEmail(e.target.value)}
+                              onKeyDown={(e) =>
+                                e.key === "Enter" && handleCoordinatorLogin()
+                              }
+                              className="mt-1 font-body"
+                            />
+                          </div>
+                          <div>
+                            <Label
+                              htmlFor="c-password"
+                              className="font-body text-sm"
+                            >
+                              Password
+                            </Label>
+                            <PasswordInput
+                              id="c-password"
+                              dataOcid="auth.coordinator.password_input"
+                              placeholder="Enter your password"
+                              value={cPassword}
+                              onChange={(e) => setCPassword(e.target.value)}
                               onKeyDown={(e) =>
                                 e.key === "Enter" && handleCoordinatorLogin()
                               }
@@ -789,10 +919,9 @@ export default function LandingPage({ onLogin }: Props) {
                             >
                               Admin Password
                             </Label>
-                            <Input
+                            <PasswordInput
                               id="admin-password"
-                              data-ocid="auth.admin.input"
-                              type="password"
+                              dataOcid="auth.admin.input"
                               placeholder="Enter admin password"
                               value={adminPassword}
                               onChange={(e) => setAdminPassword(e.target.value)}

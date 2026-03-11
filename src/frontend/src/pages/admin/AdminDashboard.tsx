@@ -71,11 +71,16 @@ function AddCoordinatorDialog({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [coordPassword, setCoordPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
-    if (!name.trim() || !email.trim()) {
-      toast.error("Please fill in both fields");
+    if (!name.trim() || !email.trim() || !coordPassword.trim()) {
+      toast.error("Please fill in all fields including the password");
+      return;
+    }
+    if (coordPassword.trim().length < 6) {
+      toast.error("Password must be at least 6 characters");
       return;
     }
     if (!actor) {
@@ -88,12 +93,14 @@ function AddCoordinatorDialog({
         adminPassword,
         name.trim(),
         email.trim(),
+        coordPassword.trim(),
       );
       toast.success(`Coordinator "${created.name}" created successfully`);
       qc.invalidateQueries({ queryKey: ["coordinators"] });
       onCreated(created);
       setName("");
       setEmail("");
+      setCoordPassword("");
       setOpen(false);
     } catch (err: unknown) {
       const msg =
@@ -154,6 +161,21 @@ function AddCoordinatorDialog({
               placeholder="coordinator@institution.edu"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 font-body"
+              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+            />
+          </div>
+          <div>
+            <Label htmlFor="coord-password" className="font-body text-sm">
+              Password
+            </Label>
+            <Input
+              id="coord-password"
+              data-ocid="admin.coordinator.password_input"
+              type="password"
+              placeholder="Min 6 characters"
+              value={coordPassword}
+              onChange={(e) => setCoordPassword(e.target.value)}
               className="mt-1 font-body"
               onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
             />

@@ -219,7 +219,7 @@ export interface backendInterface {
     changeAdminPassword(oldPassword: string, newPassword: string): Promise<boolean>;
     checkIfVolunteerAttendedEvent(volunteerId: string, eventId: string): Promise<boolean>;
     createCoordinator(name: string, email: string): Promise<Coordinator>;
-    createCoordinatorAsAdmin(adminPwd: string, name: string, email: string): Promise<Coordinator>;
+    createCoordinatorAsAdmin(adminPwd: string, name: string, email: string, coordPassword: string): Promise<Coordinator>;
     createEvent(title: string, eventType: string, requiredHours: bigint, createdBy: CoordinatorId, status: string, date: bigint, time: bigint, location: string, description: string): Promise<Event>;
     createNotification(title: string, message: string, targetAll: boolean): Promise<Notification>;
     deleteCoordinator(id: string): Promise<void>;
@@ -262,14 +262,15 @@ export interface backendInterface {
     getVolunteerById(id: string): Promise<Volunteer>;
     isCallerAdmin(): Promise<boolean>;
     issueCertificate(volunteerId: string, hoursCompleted: bigint, downloadable: boolean): Promise<Certificate>;
-    loginCoordinator(email: string): Promise<Coordinator | null>;
-    loginVolunteer(email: string): Promise<Volunteer | null>;
+    loginCoordinator(email: string, password: string): Promise<Coordinator | null>;
+    loginVolunteer(email: string, password: string): Promise<Volunteer | null>;
     manuallyMarkAttendance(volunteerId: string, eventId: string): Promise<Attendance>;
     markAttendance(eventId: string): Promise<Attendance>;
     markNotificationAsRead(notificationId: string): Promise<void>;
-    registerVolunteer(name: string, email: string, rollNumber: string, department: string, phone: string): Promise<Volunteer>;
+    registerVolunteer(name: string, email: string, rollNumber: string, department: string, phone: string, password: string): Promise<Volunteer>;
     respondToFeedback(id: string, response: string): Promise<Feedback>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setMyPassword(email: string, newPassword: string): Promise<boolean>;
     seedSampleData(): Promise<void>;
     sendMessage(message: string): Promise<ChatMessage>;
     submitFeedback(eventId: EventId | null, message: string): Promise<Feedback>;
@@ -476,17 +477,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async createCoordinatorAsAdmin(arg0: string, arg1: string, arg2: string): Promise<Coordinator> {
+    async createCoordinatorAsAdmin(arg0: string, arg1: string, arg2: string, arg3: string): Promise<Coordinator> {
         if (this.processError) {
             try {
-                const result = await this.actor.createCoordinatorAsAdmin(arg0, arg1, arg2);
+                const result = await this.actor.createCoordinatorAsAdmin(arg0, arg1, arg2, arg3);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.createCoordinatorAsAdmin(arg0, arg1, arg2);
+            const result = await this.actor.createCoordinatorAsAdmin(arg0, arg1, arg2, arg3);
             return result;
         }
     }
@@ -1078,31 +1079,31 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async loginCoordinator(arg0: string): Promise<Coordinator | null> {
+    async loginCoordinator(arg0: string, arg1: string): Promise<Coordinator | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.loginCoordinator(arg0);
+                const result = await this.actor.loginCoordinator(arg0, arg1);
                 return from_candid_opt_n29(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.loginCoordinator(arg0);
+            const result = await this.actor.loginCoordinator(arg0, arg1);
             return from_candid_opt_n29(this._uploadFile, this._downloadFile, result);
         }
     }
-    async loginVolunteer(arg0: string): Promise<Volunteer | null> {
+    async loginVolunteer(arg0: string, arg1: string): Promise<Volunteer | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.loginVolunteer(arg0);
+                const result = await this.actor.loginVolunteer(arg0, arg1);
                 return from_candid_opt_n28(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.loginVolunteer(arg0);
+            const result = await this.actor.loginVolunteer(arg0, arg1);
             return from_candid_opt_n28(this._uploadFile, this._downloadFile, result);
         }
     }
@@ -1148,17 +1149,17 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async registerVolunteer(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string): Promise<Volunteer> {
+    async registerVolunteer(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: string): Promise<Volunteer> {
         if (this.processError) {
             try {
-                const result = await this.actor.registerVolunteer(arg0, arg1, arg2, arg3, arg4);
+                const result = await this.actor.registerVolunteer(arg0, arg1, arg2, arg3, arg4, arg5);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.registerVolunteer(arg0, arg1, arg2, arg3, arg4);
+            const result = await this.actor.registerVolunteer(arg0, arg1, arg2, arg3, arg4, arg5);
             return result;
         }
     }
@@ -1187,6 +1188,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.saveCallerUserProfile(to_candid_UserProfile_n30(this._uploadFile, this._downloadFile, arg0));
+            return result;
+        }
+    }
+    async setMyPassword(arg0: string, arg1: string): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setMyPassword(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setMyPassword(arg0, arg1);
             return result;
         }
     }

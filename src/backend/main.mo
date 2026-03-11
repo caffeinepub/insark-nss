@@ -151,6 +151,9 @@ actor {
   // Email to Principal mapping for login
   stable let emailToPrincipal = Map.empty<Text, Principal>();
 
+  // Password storage: email -> hashed/plain password
+  stable let userPasswords = Map.empty<Text, Text>();
+
   // Authorization
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
@@ -241,7 +244,7 @@ actor {
   };
 
   // Volunteer Functions
-  public shared ({ caller }) func registerVolunteer(name : Text, email : Text, rollNumber : Text, department : Text, phone : Text) : async Volunteer {
+  public shared ({ caller }) func registerVolunteer(name : Text, email : Text, rollNumber : Text, department : Text, phone : Text, password : Text) : async Volunteer {
     if (volunteers.values().any(func(v) { v.email == email })) {
       Runtime.trap("Email already registered");
     };
@@ -259,6 +262,11 @@ actor {
     };
     volunteers.add(id, volunteer);
 
+    // Store password if provided
+    if (password != "") {
+      userPasswords.add(email, password);
+    };
+
     // Create user profile and assign user role
     let profile : UserProfile = {
       userId = id;
@@ -275,12 +283,23 @@ actor {
     volunteer;
   };
 
-  public shared ({ caller }) func loginVolunteer(email : Text) : async ?Volunteer {
+  public shared ({ caller }) func loginVolunteer(email : Text, password : Text) : async ?Volunteer {
     // Look up by email; also re-assign #user role so session is valid
     let found = volunteers.values().toArray().find(func(v) { v.email == email });
     switch (found) {
       case (null) { null };
       case (?vol) {
+        // If a password is stored, verify it; otherwise allow login (legacy accounts)
+        switch (userPasswords.get(email)) {
+          case (?storedPwd) {
+            if (storedPwd != password) {
+              return null; // Wrong password
+            };
+          };
+          case (null) {
+            // No password set - if caller provides one, still allow (legacy)
+          };
+        };
         accessControlState.userRoles.add(caller, #user);
         let profile : UserProfile = {
           userId = vol.id;
@@ -294,11 +313,22 @@ actor {
     };
   };
 
-  public shared ({ caller }) func loginCoordinator(email : Text) : async ?Coordinator {
+  public shared ({ caller }) func loginCoordinator(email : Text, password : Text) : async ?Coordinator {
     let coordinator = coordinators.values().toArray().find(func(c) { c.email == email });
     switch (coordinator) {
       case (null) { null };
       case (?foundCoordinator) {
+        // If a password is stored, verify it; otherwise allow login (legacy accounts)
+        switch (userPasswords.get(email)) {
+          case (?storedPwd) {
+            if (storedPwd != password) {
+              return null; // Wrong password
+            };
+          };
+          case (null) {
+            // No password set - legacy account, allow login
+          };
+        };
         // Assign #user role to caller
         accessControlState.userRoles.add(caller, #user);
         let profile : UserProfile = {
@@ -1046,7 +1076,7 @@ actor {
   //////// ADMIN AS ADMIN ///////
   ///////////////////////////////
 
-  public shared ({ caller }) func createCoordinatorAsAdmin(adminPwd : Text, name : Text, email : Text) : async Coordinator {
+  public shared ({ caller }) func createCoordinatorAsAdmin(adminPwd : Text, name : Text, email : Text, coordPassword : Text) : async Coordinator {
     if (adminPwd != adminPassword) {
       Runtime.trap("Unauthorized: Invalid admin password");
     };
@@ -1058,7 +1088,22 @@ actor {
       email;
     };
     coordinators.add(id, coordinator);
+
+    // Store coordinator password if provided
+    if (coordPassword != "") {
+      userPasswords.add(email, coordPassword);
+    };
+
     coordinator;
+  };
+
+  // Allow coordinator to reset their own password after login
+  public shared ({ caller }) func setMyPassword(email : Text, newPassword : Text) : async Bool {
+    if (not (isAuthenticatedUser(caller))) {
+      return false;
+    };
+    userPasswords.add(email, newPassword);
+    true;
   };
 
   public shared ({ caller }) func deleteCoordinatorAsAdmin(adminPwd : Text, id : Text) : async () {

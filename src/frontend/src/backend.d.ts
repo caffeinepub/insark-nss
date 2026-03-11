@@ -126,7 +126,7 @@ export interface backendInterface {
     changeAdminPassword(oldPassword: string, newPassword: string): Promise<boolean>;
     checkIfVolunteerAttendedEvent(volunteerId: string, eventId: string): Promise<boolean>;
     createCoordinator(name: string, email: string): Promise<Coordinator>;
-    createCoordinatorAsAdmin(adminPwd: string, name: string, email: string): Promise<Coordinator>;
+    createCoordinatorAsAdmin(adminPwd: string, name: string, email: string, coordPassword: string): Promise<Coordinator>;
     createEvent(title: string, eventType: string, requiredHours: bigint, createdBy: CoordinatorId, status: string, date: bigint, time: bigint, location: string, description: string): Promise<Event>;
     createNotification(title: string, message: string, targetAll: boolean): Promise<Notification>;
     deleteCoordinator(id: string): Promise<void>;
@@ -169,14 +169,15 @@ export interface backendInterface {
     getVolunteerById(id: string): Promise<Volunteer>;
     isCallerAdmin(): Promise<boolean>;
     issueCertificate(volunteerId: string, hoursCompleted: bigint, downloadable: boolean): Promise<Certificate>;
-    loginCoordinator(email: string): Promise<Coordinator | null>;
-    loginVolunteer(email: string): Promise<Volunteer | null>;
+    loginCoordinator(email: string, password: string): Promise<Coordinator | null>;
+    loginVolunteer(email: string, password: string): Promise<Volunteer | null>;
     manuallyMarkAttendance(volunteerId: string, eventId: string): Promise<Attendance>;
     markAttendance(eventId: string): Promise<Attendance>;
     markNotificationAsRead(notificationId: string): Promise<void>;
-    registerVolunteer(name: string, email: string, rollNumber: string, department: string, phone: string): Promise<Volunteer>;
+    registerVolunteer(name: string, email: string, rollNumber: string, department: string, phone: string, password: string): Promise<Volunteer>;
     respondToFeedback(id: string, response: string): Promise<Feedback>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setMyPassword(email: string, newPassword: string): Promise<boolean>;
     seedSampleData(): Promise<void>;
     sendMessage(message: string): Promise<ChatMessage>;
     submitFeedback(eventId: EventId | null, message: string): Promise<Feedback>;

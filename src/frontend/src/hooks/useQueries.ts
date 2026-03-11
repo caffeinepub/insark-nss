@@ -165,6 +165,7 @@ export function useRegisterVolunteer() {
       rollNumber: string;
       department: string;
       phone: string;
+      password: string;
     }) => {
       if (!actor) throw new Error("Actor not ready");
       return actor.registerVolunteer(
@@ -173,6 +174,7 @@ export function useRegisterVolunteer() {
         params.rollNumber,
         params.department,
         params.phone,
+        params.password,
       );
     },
   });
@@ -181,9 +183,9 @@ export function useRegisterVolunteer() {
 export function useLoginVolunteer() {
   const { actor } = useActor();
   return useMutation({
-    mutationFn: async (email: string) => {
+    mutationFn: async (params: { email: string; password: string }) => {
       if (!actor) throw new Error("Actor not ready");
-      return actor.loginVolunteer(email);
+      return actor.loginVolunteer(params.email, params.password);
     },
   });
 }
@@ -191,9 +193,9 @@ export function useLoginVolunteer() {
 export function useLoginCoordinator() {
   const { actor } = useActor();
   return useMutation({
-    mutationFn: async (email: string) => {
+    mutationFn: async (params: { email: string; password: string }) => {
       if (!actor) throw new Error("Actor not ready");
-      return actor.loginCoordinator(email);
+      return actor.loginCoordinator(params.email, params.password);
     },
   });
 }

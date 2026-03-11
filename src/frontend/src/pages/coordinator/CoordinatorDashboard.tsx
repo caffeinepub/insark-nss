@@ -6,6 +6,7 @@ import {
   CheckSquare,
   Image,
   LayoutDashboard,
+  Menu,
   MessageSquare,
   MessagesSquare,
   Users,
@@ -43,6 +44,12 @@ type CoordPage =
 
 export default function CoordinatorDashboard({ session, onLogout }: Props) {
   const [activePage, setActivePage] = useState<CoordPage>("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const navigate = (p: string) => {
+    setActivePage(p as CoordPage);
+    setSidebarOpen(false);
+  };
 
   const navItems = [
     {
@@ -140,12 +147,38 @@ export default function CoordinatorDashboard({ session, onLogout }: Props) {
         session={session}
         navItems={navItems}
         activePage={activePage}
-        onNavigate={(p) => setActivePage(p as CoordPage)}
+        onNavigate={navigate}
         onLogout={onLogout}
         title="INSARK"
         subtitle="Coordinator Portal"
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
-      <main className="flex-1 overflow-auto">{renderPage()}</main>
+      <main className="flex-1 overflow-auto">
+        {/* Mobile hamburger */}
+        <div
+          className="md:hidden flex items-center px-4 py-3 border-b"
+          style={{
+            background: "oklch(0.18 0.07 152)",
+            borderColor: "oklch(0.28 0.06 152)",
+          }}
+        >
+          <button
+            type="button"
+            data-ocid="nav.sidebar.toggle"
+            onClick={() => setSidebarOpen(true)}
+            className="p-1.5 rounded-lg"
+            style={{ color: "oklch(0.88 0.12 85)" }}
+            aria-label="Open menu"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+          <span className="ml-3 font-display font-bold text-white text-sm">
+            INSARK — Coordinator Portal
+          </span>
+        </div>
+        {renderPage()}
+      </main>
     </div>
   );
 }
