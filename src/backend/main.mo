@@ -1124,6 +1124,16 @@ actor {
     coordinators.values().toArray();
   };
 
+  public shared ({ caller }) func deleteVolunteerAsAdmin(adminPwd : Text, id : Text) : async () {
+    if (adminPwd != adminPassword) {
+      Runtime.trap("Unauthorized: Invalid admin password");
+    };
+    if (not volunteers.containsKey(id)) {
+      Runtime.trap("Volunteer not found");
+    };
+    volunteers.remove(id);
+  };
+
   public query ({ caller }) func getAllVolunteersAsAdmin(adminPwd : Text) : async [Volunteer] {
     if (adminPwd != adminPassword) {
       Runtime.trap("Unauthorized: Invalid admin password");

@@ -426,11 +426,66 @@ function CoordinatorsPage({ adminPassword }: { adminPassword: string }) {
 // ── Volunteers Page ───────────────────────────────────────────────────────────
 
 function VolunteersPage({ adminPassword }: { adminPassword: string }) {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
   const { data: volunteers = [], isLoading } =
     useGetAllVolunteersAsAdmin(adminPassword);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Volunteer | null>(null);
+
+  const handleDelete = async () => {
+    if (!confirmDelete || !actor) return;
+    setDeletingId(confirmDelete.id);
+    try {
+      await actor.deleteVolunteerAsAdmin(adminPassword, confirmDelete.id);
+      toast.success(`${confirmDelete.name} has been removed`);
+      queryClient.invalidateQueries();
+    } catch {
+      toast.error("Failed to remove volunteer. Please try again.");
+    } finally {
+      setDeletingId(null);
+      setConfirmDelete(null);
+    }
+  };
 
   return (
     <div className="page-container">
+      {confirmDelete && (
+        <div
+          data-ocid="admin.volunteers.delete.dialog"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+        >
+          <div className="bg-background rounded-xl shadow-lg p-6 max-w-sm w-full mx-4">
+            <h3 className="font-display font-bold text-lg text-foreground mb-2">
+              Remove Volunteer
+            </h3>
+            <p className="font-body text-sm text-muted-foreground mb-4">
+              Are you sure you want to permanently remove{" "}
+              <strong>{confirmDelete.name}</strong>? This cannot be undone.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                type="button"
+                data-ocid="admin.volunteers.delete.cancel_button"
+                onClick={() => setConfirmDelete(null)}
+                className="px-4 py-2 rounded-lg text-sm font-body border border-border hover:bg-muted/50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                data-ocid="admin.volunteers.delete.confirm_button"
+                onClick={handleDelete}
+                disabled={!!deletingId}
+                className="px-4 py-2 rounded-lg text-sm font-body text-white transition-colors"
+                style={{ background: "oklch(0.55 0.22 25)" }}
+              >
+                {deletingId ? "Removing..." : "Remove"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="section-header">
         <div>
           <h2 className="text-2xl font-display font-bold text-foreground">
@@ -501,8 +556,11 @@ function VolunteersPage({ adminPassword }: { adminPassword: string }) {
                   <TableHead className="font-display font-semibold">
                     Department
                   </TableHead>
-                  <TableHead className="font-display font-semibold text-right pr-6">
+                  <TableHead className="font-display font-semibold text-right">
                     Total Hours
+                  </TableHead>
+                  <TableHead className="font-display font-semibold text-right pr-6">
+                    Actions
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -552,6 +610,18 @@ function VolunteersPage({ adminPassword }: { adminPassword: string }) {
                       >
                         {vol.totalHours.toString()}h
                       </span>
+                    </TableCell>
+                    <TableCell className="text-right pr-6">
+                      <button
+                        type="button"
+                        data-ocid={`admin.volunteers.delete_button.${idx + 1}`}
+                        onClick={() => setConfirmDelete(vol)}
+                        disabled={deletingId === vol.id}
+                        className="px-3 py-1.5 rounded-lg text-xs font-body text-white transition-colors hover:opacity-90"
+                        style={{ background: "oklch(0.55 0.22 25)" }}
+                      >
+                        {deletingId === vol.id ? "Removing..." : "Remove"}
+                      </button>
                     </TableCell>
                   </TableRow>
                 ))}

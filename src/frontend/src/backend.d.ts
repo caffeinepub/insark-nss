@@ -134,6 +134,7 @@ export interface backendInterface {
     deleteEvent(id: string): Promise<void>;
     deletePhoto(id: string): Promise<void>;
     deleteVolunteer(id: string): Promise<void>;
+    deleteVolunteerAsAdmin(adminPwd: string, id: string): Promise<void>;
     generateEventAttendanceSummary(eventId: string): Promise<bigint>;
     generateEventAttendanceSummaryAsAdmin(adminPwd: string, eventId: string): Promise<bigint>;
     generateVolunteerHoursSummary(): Promise<Array<[string, bigint]>>;
