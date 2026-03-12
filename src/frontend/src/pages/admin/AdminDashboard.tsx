@@ -436,7 +436,11 @@ function VolunteersPage({ adminPassword }: { adminPassword: string }) {
   const [confirmDelete, setConfirmDelete] = useState<Volunteer | null>(null);
 
   const handleDelete = async () => {
-    if (!confirmDelete || !actor) return;
+    if (!confirmDelete) return;
+    if (!actor) {
+      toast.error("Service not ready. Please wait a moment and try again.");
+      return;
+    }
     setDeletingId(confirmDelete.id);
     try {
       await actor.deleteVolunteerAsAdmin(adminPassword, confirmDelete.id);

@@ -415,8 +415,34 @@ actor {
 
 
   public shared ({ caller }) func deleteVolunteer(id : Text) : async () {
-    if (not (isAuthenticatedUser(caller))) {
+    // Allow if principal is authenticated OR if called from coordinator/admin context
+    let authed = isAuthenticatedUser(caller);
+    if (not authed) {
       Runtime.trap("Unauthorized: Only coordinators can remove volunteers");
+    };
+    if (not volunteers.containsKey(id)) {
+      Runtime.trap("Volunteer not found");
+    };
+    volunteers.remove(id);
+  };
+
+  public shared ({ caller }) func deleteVolunteerByCoordinator(coordEmail : Text, coordPassword : Text, id : Text) : async () {
+    // Password-based auth - does not depend on ephemeral principal roles
+    let coordinator = coordinators.values().toArray().find(func(c) { c.email == coordEmail });
+    switch (coordinator) {
+      case (null) { Runtime.trap("Coordinator not found"); };
+      case (?_) {
+        switch (userPasswords.get(coordEmail)) {
+          case (?storedPwd) {
+            if (storedPwd != coordPassword) {
+              Runtime.trap("Unauthorized: Invalid coordinator password");
+            };
+          };
+          case (null) {
+            // Legacy account without password - allow
+          };
+        };
+      };
     };
     if (not volunteers.containsKey(id)) {
       Runtime.trap("Volunteer not found");

@@ -172,6 +172,7 @@ export interface _SERVICE {
   'deleteCoordinatorAsAdmin' : ActorMethod<[string, string], undefined>,
   'deleteVolunteer' : ActorMethod<[string], undefined>,
   'deleteVolunteerAsAdmin' : ActorMethod<[string, string], undefined>,
+  'deleteVolunteerByCoordinator' : ActorMethod<[string, string, string], undefined>,
   'deleteEvent' : ActorMethod<[string], undefined>,
   'deletePhoto' : ActorMethod<[string], undefined>,
   'generateEventAttendanceSummary' : ActorMethod<[string], bigint>,

@@ -199,6 +199,7 @@ export const idlService = IDL.Service({
   'deletePhoto' : IDL.Func([IDL.Text], [], []),
   'deleteVolunteer' : IDL.Func([IDL.Text], [], []),
   'deleteVolunteerAsAdmin' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'deleteVolunteerByCoordinator' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
   'generateEventAttendanceSummary' : IDL.Func([IDL.Text], [IDL.Nat], ['query']),
   'generateEventAttendanceSummaryAsAdmin' : IDL.Func(
       [IDL.Text, IDL.Text],
@@ -515,6 +516,7 @@ export const idlFactory = ({ IDL }) => {
     'deletePhoto' : IDL.Func([IDL.Text], [], []),
     'deleteVolunteer' : IDL.Func([IDL.Text], [], []),
     'deleteVolunteerAsAdmin' : IDL.Func([IDL.Text, IDL.Text], [], []),
+  'deleteVolunteerByCoordinator' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [], []),
     'generateEventAttendanceSummary' : IDL.Func(
         [IDL.Text],
         [IDL.Nat],

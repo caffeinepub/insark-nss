@@ -16,15 +16,7 @@ export function useActor() {
 
       if (!isAuthenticated) {
         // Return anonymous actor if not authenticated
-        const anonActor = await createActorWithConfig();
-        // Try to initialize access control but don't fail if it errors
-        try {
-          const adminToken = getSecretParameter("caffeineAdminToken") || "";
-          await anonActor._initializeAccessControlWithSecret(adminToken);
-        } catch {
-          // Silently ignore -- canister may be cold-starting; actor is still usable
-        }
-        return anonActor;
+        return await createActorWithConfig();
       }
 
       const actorOptions = {
@@ -34,20 +26,13 @@ export function useActor() {
       };
 
       const actor = await createActorWithConfig(actorOptions);
-      // Try to initialize access control but don't fail actor creation if it errors
-      try {
-        const adminToken = getSecretParameter("caffeineAdminToken") || "";
-        await actor._initializeAccessControlWithSecret(adminToken);
-      } catch {
-        // Silently ignore -- canister may be cold-starting; actor is still usable
-      }
+      const adminToken = getSecretParameter("caffeineAdminToken") || "";
+      await actor._initializeAccessControlWithSecret(adminToken);
       return actor;
     },
-    // Retry up to 5 times with exponential backoff if actor creation itself fails
-    retry: 5,
-    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 15000),
-    // Keep actor alive until identity changes
+    // Only refetch when identity changes
     staleTime: Number.POSITIVE_INFINITY,
+    // This will cause the actor to be recreated when the identity changes
     enabled: true,
   });
 

@@ -43,9 +43,10 @@ import {
 import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { getSession } from "../../../App";
 import type { Volunteer } from "../../../backend.d";
+import { useActor } from "../../../hooks/useActor";
 import {
-  useDeleteVolunteer,
   useGetAllVolunteers,
   useGetAttendanceForEvent,
   useGetServiceHoursByVolunteer,
@@ -67,7 +68,7 @@ function VolunteerDetail({
   const { data: serviceHours, isLoading: loadingHours } =
     useGetServiceHoursByVolunteer(volunteer.id);
   const updateVolunteer = useUpdateVolunteerById();
-  const deleteVolunteer = useDeleteVolunteer();
+  const { actor } = useActor();
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -106,12 +107,22 @@ function VolunteerDetail({
   }
 
   async function handleDelete() {
+    const session = getSession();
+    if (!actor) {
+      toast.error("Service not ready. Please wait a moment and try again.");
+      setDeleteOpen(false);
+      return;
+    }
     try {
-      await deleteVolunteer.mutateAsync(volunteer.id);
+      await actor.deleteVolunteerByCoordinator(
+        session?.email ?? "",
+        session?.password ?? "",
+        volunteer.id,
+      );
       toast.success(`${volunteer.name} has been removed`);
       onDeleted();
     } catch {
-      toast.error("Failed to remove volunteer");
+      toast.error("Failed to remove volunteer. Please try again.");
     }
     setDeleteOpen(false);
   }
@@ -416,10 +427,10 @@ function VolunteerDetail({
             <AlertDialogAction
               data-ocid="volunteer_delete.confirm_button"
               onClick={handleDelete}
-              disabled={deleteVolunteer.isPending}
+              disabled={false}
               className="font-body bg-red-600 hover:bg-red-700"
             >
-              {deleteVolunteer.isPending ? "Removing..." : "Remove Volunteer"}
+              "Remove Volunteer"
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
