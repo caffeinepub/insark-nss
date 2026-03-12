@@ -117,7 +117,6 @@ export default function CoordAttendance() {
     );
   };
 
-  // Auto-save activity point when input loses focus
   const handlePointBlur = async (rowIdx: number) => {
     const row = rows[rowIdx];
     if (!row || !visibleEvents[0]) return;
@@ -285,9 +284,7 @@ export default function CoordAttendance() {
                     </TableHeader>
                     <TableBody>
                       {rows.map((row, rowIdx) => {
-                        const total = row.days
-                          .slice(0, visibleEvents.length)
-                          .filter(Boolean).length;
+                        const total = row.days.filter(Boolean).length;
                         const ap = Number.parseInt(row.activityPoint, 10);
                         const totalPoints = Number.isNaN(ap) ? 0 : ap * total;
                         const rowNum = rowIdx + 1;
@@ -316,19 +313,11 @@ export default function CoordAttendance() {
                                 }
                                 className="text-center border-r"
                               >
-                                {dayIdx < visibleEvents.length ? (
-                                  <Checkbox
-                                    data-ocid={`attendance.checkbox.${rowNum}`}
-                                    checked={row.days[dayIdx] ?? false}
-                                    onCheckedChange={() =>
-                                      toggle(rowIdx, dayIdx)
-                                    }
-                                  />
-                                ) : (
-                                  <span className="text-muted-foreground text-xs">
-                                    -
-                                  </span>
-                                )}
+                                <Checkbox
+                                  data-ocid={`attendance.checkbox.${rowNum}.${dayIdx + 1}`}
+                                  checked={row.days[dayIdx] ?? false}
+                                  onCheckedChange={() => toggle(rowIdx, dayIdx)}
+                                />
                               </TableCell>
                             ))}
                             <TableCell className="text-center font-body font-semibold border-r">

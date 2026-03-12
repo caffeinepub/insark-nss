@@ -159,7 +159,7 @@ export const idlService = IDL.Service({
       [ServiceHours],
       [],
     ),
-  'adminLogin' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+  'adminLogin' : IDL.Func([IDL.Text], [IDL.Bool], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'changeAdminPassword' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
   'checkIfVolunteerAttendedEvent' : IDL.Func(
@@ -468,7 +468,7 @@ export const idlFactory = ({ IDL }) => {
         [ServiceHours],
         [],
       ),
-    'adminLogin' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
+    'adminLogin' : IDL.Func([IDL.Text], [IDL.Bool], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'changeAdminPassword' : IDL.Func([IDL.Text, IDL.Text], [IDL.Bool], []),
     'checkIfVolunteerAttendedEvent' : IDL.Func(
