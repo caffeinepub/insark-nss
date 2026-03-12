@@ -126,20 +126,25 @@ export default function LandingPage({ onLogin }: Props) {
       toast.error("Please enter your password");
       return;
     }
-    try {
-      const result = await loginVolunteer.mutateAsync({
-        email: vEmail.trim(),
-        password: vPassword.trim(),
-      });
-      if (!result) {
-        toast.error(
-          "Invalid email or password. Please check your credentials.",
+    const delayFn = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const maxRetries = 6;
+    let volActor: Awaited<ReturnType<typeof createActorWithConfig>> | null =
+      null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (!volActor) volActor = await createActorWithConfig();
+        const result = await volActor.loginVolunteer(
+          vEmail.trim(),
+          vPassword.trim(),
         );
-        return;
-      }
-      // Save user profile
-      if (actor) {
-        await actor
+        if (!result) {
+          toast.error(
+            "Invalid email or password. Please check your credentials.",
+          );
+          return;
+        }
+        // Save user profile (best effort)
+        volActor
           .saveCallerUserProfile({
             userId: result.id,
             name: result.name,
@@ -147,16 +152,35 @@ export default function LandingPage({ onLogin }: Props) {
             email: result.email,
           })
           .catch(() => {});
+        toast.success(`Welcome back, ${result.name}!`);
+        onLogin({
+          role: "volunteer",
+          id: result.id,
+          email: result.email,
+          name: result.name,
+          password: vPassword.trim(),
+        });
+        return;
+      } catch (e: unknown) {
+        volActor = null;
+        const msg = e instanceof Error ? e.message : String(e);
+        // If it's a wrong password / not found error, don't retry
+        if (
+          msg.includes("not found") ||
+          msg.includes("Invalid") ||
+          msg.includes("password")
+        ) {
+          toast.error("Login failed. Please check your credentials.");
+          return;
+        }
+        if (attempt < maxRetries) {
+          await delayFn(2000);
+        } else {
+          toast.error(
+            "Unable to reach the server. Please try again in a moment.",
+          );
+        }
       }
-      toast.success(`Welcome back, ${result.name}!`);
-      onLogin({
-        role: "volunteer",
-        id: result.id,
-        email: result.email,
-        name: result.name,
-      });
-    } catch {
-      toast.error("Login failed. Please try again.");
     }
   };
 
@@ -176,17 +200,22 @@ export default function LandingPage({ onLogin }: Props) {
       toast.error("Password must be at least 6 characters");
       return;
     }
-    try {
-      const result = await registerVolunteer.mutateAsync({
-        name: regName.trim(),
-        email: regEmail.trim(),
-        rollNumber: regRoll.trim(),
-        department: regDept.trim(),
-        phone: regPhone.trim(),
-        password: regPassword.trim(),
-      });
-      if (actor) {
-        await actor
+    const delayFn2 = (ms: number) => new Promise((res) => setTimeout(res, ms));
+    const maxRegRetries = 6;
+    let regActor: Awaited<ReturnType<typeof createActorWithConfig>> | null =
+      null;
+    for (let attempt = 1; attempt <= maxRegRetries; attempt++) {
+      try {
+        if (!regActor) regActor = await createActorWithConfig();
+        const result = await regActor.registerVolunteer(
+          regName.trim(),
+          regEmail.trim(),
+          regRoll.trim(),
+          regDept.trim(),
+          regPhone.trim(),
+          regPassword.trim(),
+        );
+        regActor
           .saveCallerUserProfile({
             userId: result.id,
             name: result.name,
@@ -194,21 +223,30 @@ export default function LandingPage({ onLogin }: Props) {
             email: result.email,
           })
           .catch(() => {});
+        toast.success(`Welcome to INSARK, ${result.name}!`);
+        onLogin({
+          role: "volunteer",
+          id: result.id,
+          email: result.email,
+          name: result.name,
+          password: regPassword.trim(),
+        });
+        return;
+      } catch (err: unknown) {
+        regActor = null;
+        const msg = err instanceof Error ? err.message : "Registration failed";
+        if (msg.includes("already")) {
+          toast.error("Email already registered. Please login.");
+          return;
+        }
+        if (attempt < maxRegRetries) {
+          await delayFn2(2000);
+        } else {
+          toast.error(
+            "Unable to reach the server. Please try again in a moment.",
+          );
+        }
       }
-      toast.success(`Welcome to INSARK, ${result.name}!`);
-      onLogin({
-        role: "volunteer",
-        id: result.id,
-        email: result.email,
-        name: result.name,
-      });
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Registration failed";
-      toast.error(
-        msg.includes("already")
-          ? "Email already registered. Please login."
-          : msg,
-      );
     }
   };
 
@@ -315,6 +353,7 @@ export default function LandingPage({ onLogin }: Props) {
           id: result.id,
           email: result.email,
           name: result.name,
+          password: cPassword.trim(),
         });
         return;
       } catch (e) {

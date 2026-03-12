@@ -162,10 +162,10 @@ export default function VolunteerDashboard({ session, onLogout }: Props) {
           <button
             type="button"
             data-ocid="nav.sidebar.toggle"
-            onClick={() => setSidebarOpen(true)}
+            onClick={() => setSidebarOpen((prev) => !prev)}
             className="p-1.5 rounded-lg"
             style={{ color: "oklch(0.88 0.12 85)" }}
-            aria-label="Open menu"
+            aria-label="Toggle menu"
           >
             <Menu className="w-6 h-6" />
           </button>

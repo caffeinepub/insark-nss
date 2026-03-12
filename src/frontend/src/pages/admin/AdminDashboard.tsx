@@ -32,12 +32,14 @@ import {
   KeyRound,
   Loader2,
   LogOut,
+  Menu,
   Plus,
   Settings,
   Shield,
   Trash2,
   UserSquare2,
   Users,
+  X,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { motion } from "motion/react";
@@ -798,6 +800,7 @@ function SettingsPage() {
 
 export default function AdminDashboard({ onLogout, adminPassword }: Props) {
   const [activePage, setActivePage] = useState<AdminPage>("coordinators");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const navItems: {
     key: AdminPage;
@@ -840,9 +843,26 @@ export default function AdminDashboard({ onLogout, adminPassword }: Props) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <button
+          type="button"
+          aria-label="Close menu"
+          className="fixed inset-0 z-20 bg-black/50 md:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
-        className="flex flex-col h-full w-64 flex-shrink-0"
+        className={[
+          "flex flex-col h-full w-64 flex-shrink-0 transition-transform duration-300",
+          // Mobile: fixed overlay
+          "fixed inset-y-0 left-0 z-30",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          // Desktop: always visible static
+          "md:static md:translate-x-0 md:z-auto",
+        ].join(" ")}
         style={{
           background: "oklch(0.14 0.06 152)",
           boxShadow: "2px 0 20px oklch(0 0 0 / 0.25)",
@@ -850,7 +870,7 @@ export default function AdminDashboard({ onLogout, adminPassword }: Props) {
       >
         {/* Logo / Header */}
         <div
-          className="p-5 border-b"
+          className="p-5 border-b flex items-center justify-between"
           style={{ borderColor: "oklch(0.22 0.06 152)" }}
         >
           <div className="flex items-center gap-3">
@@ -875,6 +895,17 @@ export default function AdminDashboard({ onLogout, adminPassword }: Props) {
               </div>
             </div>
           </div>
+          {/* Close button — mobile only */}
+          <button
+            type="button"
+            data-ocid="nav.admin.sidebar.close_button"
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+            style={{ color: "oklch(0.65 0.04 140)" }}
+            aria-label="Close menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Admin badge */}
@@ -916,7 +947,10 @@ export default function AdminDashboard({ onLogout, adminPassword }: Props) {
                 type="button"
                 key={item.key}
                 data-ocid={item.ocid}
-                onClick={() => setActivePage(item.key)}
+                onClick={() => {
+                  setActivePage(item.key);
+                  setSidebarOpen(false);
+                }}
                 whileHover={{ x: 2 }}
                 transition={{ duration: 0.15 }}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all duration-150"
@@ -984,9 +1018,32 @@ export default function AdminDashboard({ onLogout, adminPassword }: Props) {
 
       {/* Main content */}
       <main className="flex-1 overflow-auto bg-background">
-        {/* Top bar */}
+        {/* Mobile top bar */}
         <div
-          className="sticky top-0 z-10 flex items-center justify-between px-6 py-3 border-b"
+          className="md:hidden flex items-center px-4 py-3 border-b"
+          style={{
+            background: "oklch(0.14 0.06 152)",
+            borderColor: "oklch(0.22 0.06 152)",
+          }}
+        >
+          <button
+            type="button"
+            data-ocid="nav.admin.sidebar.toggle"
+            onClick={() => setSidebarOpen((prev) => !prev)}
+            className="p-1.5 rounded-lg"
+            style={{ color: "oklch(0.88 0.12 85)" }}
+            aria-label="Toggle menu"
+          >
+            <Menu className="w-6 h-6" />
+          </button>
+          <span className="ml-3 font-display font-bold text-white text-sm">
+            INSARK — Admin Portal
+          </span>
+        </div>
+
+        {/* Desktop top bar */}
+        <div
+          className="hidden md:flex sticky top-0 z-10 items-center justify-between px-6 py-3 border-b"
           style={{
             background: "oklch(var(--background) / 0.95)",
             backdropFilter: "blur(8px)",

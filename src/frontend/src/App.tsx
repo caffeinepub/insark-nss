@@ -1,7 +1,6 @@
 import { Toaster } from "@/components/ui/sonner";
 import { useEffect, useRef, useState } from "react";
 import { createActorWithConfig } from "./config";
-import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import LandingPage from "./pages/LandingPage";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import CoordinatorDashboard from "./pages/coordinator/CoordinatorDashboard";
@@ -16,6 +15,7 @@ export interface AuthSession {
   email: string;
   name: string;
   adminPassword?: string;
+  password?: string;
 }
 
 const SESSION_KEY = "insark_session";
@@ -47,9 +47,9 @@ async function silentReAuth(session: AuthSession): Promise<void> {
     const adminToken = getSecretParameter("caffeineAdminToken") || "";
     await actor._initializeAccessControlWithSecret(adminToken);
     if (session.role === "volunteer") {
-      await actor.loginVolunteer(session.email, "");
+      await actor.loginVolunteer(session.email, session.password ?? "");
     } else if (session.role === "coordinator") {
-      await actor.loginCoordinator(session.email, "");
+      await actor.loginCoordinator(session.email, session.password ?? "");
     }
   } catch {
     // Silent -- do not break the app if re-auth fails
