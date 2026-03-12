@@ -170,6 +170,8 @@ export interface _SERVICE {
   'createNotification' : ActorMethod<[string, string, boolean], Notification>,
   'deleteCoordinator' : ActorMethod<[string], undefined>,
   'deleteCoordinatorAsAdmin' : ActorMethod<[string, string], undefined>,
+  'deleteVolunteer' : ActorMethod<[string], undefined>,
+  'deleteVolunteerAsAdmin' : ActorMethod<[string, string], undefined>,
   'deleteEvent' : ActorMethod<[string], undefined>,
   'deletePhoto' : ActorMethod<[string], undefined>,
   'generateEventAttendanceSummary' : ActorMethod<[string], bigint>,
@@ -243,6 +245,7 @@ export interface _SERVICE {
     Event
   >,
   'updateVolunteerProfile' : ActorMethod<[string, string, string], Volunteer>,
+  'updateVolunteerById' : ActorMethod<[string, string, string, string, string], Volunteer>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

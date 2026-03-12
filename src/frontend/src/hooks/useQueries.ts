@@ -14,6 +14,24 @@ import type {
 } from "../backend.d";
 import { useActor } from "./useActor";
 
+// Helper: retry an ICP read call up to `times` times with a delay between attempts
+async function retryRead<T>(
+  fn: () => Promise<T>,
+  times = 3,
+  delayMs = 1500,
+): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < times; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (i < times - 1) await new Promise((r) => setTimeout(r, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
 // ── Events ──────────────────────────────────────────────────────────────────
 
 export function useGetAllEvents() {
@@ -22,9 +40,10 @@ export function useGetAllEvents() {
     queryKey: ["events"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllEvents();
+      return retryRead(() => actor.getAllEvents());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -34,9 +53,10 @@ export function useGetUpcomingEvents() {
     queryKey: ["events", "upcoming"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getUpcomingEvents();
+      return retryRead(() => actor.getUpcomingEvents());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -46,9 +66,10 @@ export function useGetEvent(id: string) {
     queryKey: ["event", id],
     queryFn: async () => {
       if (!actor) throw new Error("Actor not ready");
-      return actor.getEvent(id);
+      return retryRead(() => actor.getEvent(id));
     },
     enabled: !!actor && !isFetching && !!id,
+    retry: 3,
   });
 }
 
@@ -67,7 +88,10 @@ export function useCreateEvent() {
       location: string;
       description: string;
     }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.createEvent(
         params.title,
         params.eventType,
@@ -100,7 +124,10 @@ export function useUpdateEvent() {
       location: string;
       description: string;
     }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.updateEvent(
         params.id,
         params.title,
@@ -123,7 +150,10 @@ export function useDeleteEvent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.deleteEvent(id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["events"] }),
@@ -138,9 +168,10 @@ export function useGetAllVolunteers() {
     queryKey: ["volunteers"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllVolunteers();
+      return retryRead(() => actor.getAllVolunteers());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -150,9 +181,10 @@ export function useGetVolunteerById(id: string) {
     queryKey: ["volunteer", id],
     queryFn: async () => {
       if (!actor) throw new Error("Actor not ready");
-      return actor.getVolunteerById(id);
+      return retryRead(() => actor.getVolunteerById(id));
     },
     enabled: !!actor && !isFetching && !!id,
+    retry: 3,
   });
 }
 
@@ -167,7 +199,10 @@ export function useRegisterVolunteer() {
       phone: string;
       password: string;
     }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.registerVolunteer(
         params.name,
         params.email,
@@ -184,7 +219,10 @@ export function useLoginVolunteer() {
   const { actor } = useActor();
   return useMutation({
     mutationFn: async (params: { email: string; password: string }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.loginVolunteer(params.email, params.password);
     },
   });
@@ -194,7 +232,10 @@ export function useLoginCoordinator() {
   const { actor } = useActor();
   return useMutation({
     mutationFn: async (params: { email: string; password: string }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.loginCoordinator(params.email, params.password);
     },
   });
@@ -211,7 +252,10 @@ export function useUpdateVolunteerById() {
       department: string;
       rollNumber: string;
     }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.updateVolunteerById(
         params.id,
         params.name,
@@ -235,7 +279,10 @@ export function useSaveCallerUserProfile() {
       role: "coordinator" | "volunteer";
       email: string;
     }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.saveCallerUserProfile({
         userId: params.userId,
         name: params.name,
@@ -254,9 +301,10 @@ export function useGetMyAttendance() {
     queryKey: ["attendance", "mine"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getMyAttendance();
+      return retryRead(() => actor.getMyAttendance());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -266,9 +314,10 @@ export function useGetAttendanceForEvent(eventId: string) {
     queryKey: ["attendance", "event", eventId],
     queryFn: async () => {
       if (!actor || !eventId) return [];
-      return actor.getAttendanceForEvent(eventId);
+      return retryRead(() => actor.getAttendanceForEvent(eventId));
     },
     enabled: !!actor && !isFetching && !!eventId,
+    retry: 3,
   });
 }
 
@@ -277,7 +326,10 @@ export function useManuallyMarkAttendance() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: { volunteerId: string; eventId: string }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.manuallyMarkAttendance(params.volunteerId, params.eventId);
     },
     onSuccess: (_, params) => {
@@ -296,9 +348,10 @@ export function useGetMyTotalServiceHours() {
     queryKey: ["serviceHours", "total"],
     queryFn: async () => {
       if (!actor) return BigInt(0);
-      return actor.getMyTotalServiceHours();
+      return retryRead(() => actor.getMyTotalServiceHours());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -308,9 +361,10 @@ export function useGetServiceHoursByVolunteer(volunteerId: string) {
     queryKey: ["serviceHours", "volunteer", volunteerId],
     queryFn: async () => {
       if (!actor || !volunteerId) return [];
-      return actor.getServiceHoursByVolunteer(volunteerId);
+      return retryRead(() => actor.getServiceHoursByVolunteer(volunteerId));
     },
     enabled: !!actor && !isFetching && !!volunteerId,
+    retry: 3,
   });
 }
 
@@ -320,9 +374,10 @@ export function useGetAllServiceHoursForEvent(eventId: string) {
     queryKey: ["serviceHours", "event", eventId],
     queryFn: async () => {
       if (!actor || !eventId) return [];
-      return actor.getAllServiceHoursForEvent(eventId);
+      return retryRead(() => actor.getAllServiceHoursForEvent(eventId));
     },
     enabled: !!actor && !isFetching && !!eventId,
+    retry: 3,
   });
 }
 
@@ -336,7 +391,10 @@ export function useAddServiceHours() {
       hours: bigint;
       date: bigint;
     }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.addServiceHours(
         params.volunteerId,
         params.eventId,
@@ -358,9 +416,10 @@ export function useGetAllPhotos() {
     queryKey: ["photos"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllPhotos();
+      return retryRead(() => actor.getAllPhotos());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -370,9 +429,10 @@ export function useGetPhotosByEvent(eventId: string) {
     queryKey: ["photos", "event", eventId],
     queryFn: async () => {
       if (!actor || !eventId) return [];
-      return actor.getPhotosByEvent(eventId);
+      return retryRead(() => actor.getPhotosByEvent(eventId));
     },
     enabled: !!actor && !isFetching && !!eventId,
+    retry: 3,
   });
 }
 
@@ -385,7 +445,10 @@ export function useAddPhoto() {
       title: string;
       blobId: ExternalBlob;
     }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.addPhoto(params.eventId, params.title, params.blobId);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["photos"] }),
@@ -397,7 +460,10 @@ export function useDeletePhoto() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.deletePhoto(id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["photos"] }),
@@ -412,9 +478,10 @@ export function useGetMyCertificates() {
     queryKey: ["certificates", "mine"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getMyCertificates();
+      return retryRead(() => actor.getMyCertificates());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -424,9 +491,10 @@ export function useGetAllCertificates() {
     queryKey: ["certificates"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllCertificates();
+      return retryRead(() => actor.getAllCertificates());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -439,7 +507,10 @@ export function useIssueCertificate() {
       hoursCompleted: bigint;
       downloadable: boolean;
     }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.issueCertificate(
         params.volunteerId,
         params.hoursCompleted,
@@ -458,9 +529,10 @@ export function useGetMyFeedback() {
     queryKey: ["feedback", "mine"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getMyFeedback();
+      return retryRead(() => actor.getMyFeedback());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -470,9 +542,10 @@ export function useGetAllFeedback() {
     queryKey: ["feedback"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllFeedback();
+      return retryRead(() => actor.getAllFeedback());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -481,7 +554,10 @@ export function useSubmitFeedback() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: { eventId: string | null; message: string }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.submitFeedback(params.eventId, params.message);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["feedback"] }),
@@ -493,7 +569,10 @@ export function useRespondToFeedback() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (params: { id: string; response: string }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.respondToFeedback(params.id, params.response);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["feedback"] }),
@@ -508,9 +587,10 @@ export function useGetAllNotifications() {
     queryKey: ["notifications"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllNotifications();
+      return retryRead(() => actor.getAllNotifications());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -520,9 +600,10 @@ export function useGetUnreadNotificationCount() {
     queryKey: ["notifications", "unread"],
     queryFn: async () => {
       if (!actor) return BigInt(0);
-      return actor.getUnreadNotificationCount();
+      return retryRead(() => actor.getUnreadNotificationCount());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -535,7 +616,10 @@ export function useCreateNotification() {
       message: string;
       targetAll: boolean;
     }) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.createNotification(
         params.title,
         params.message,
@@ -551,7 +635,10 @@ export function useMarkNotificationAsRead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (notificationId: string) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.markNotificationAsRead(notificationId);
     },
     onSuccess: () => {
@@ -568,9 +655,10 @@ export function useGenerateVolunteerHoursSummary() {
     queryKey: ["reports", "volunteer-hours"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.generateVolunteerHoursSummary();
+      return retryRead(() => actor.generateVolunteerHoursSummary());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -580,9 +668,10 @@ export function useGenerateEventAttendanceSummary(eventId: string) {
     queryKey: ["reports", "event-attendance", eventId],
     queryFn: async () => {
       if (!actor || !eventId) return BigInt(0);
-      return actor.generateEventAttendanceSummary(eventId);
+      return retryRead(() => actor.generateEventAttendanceSummary(eventId));
     },
     enabled: !!actor && !isFetching && !!eventId,
+    retry: 3,
   });
 }
 
@@ -593,7 +682,10 @@ export function useSeedSampleData() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.seedSampleData();
     },
     onSuccess: () => {
@@ -610,9 +702,10 @@ export function useGetAllCoordinators() {
     queryKey: ["coordinators"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllCoordinators();
+      return retryRead(() => actor.getAllCoordinators());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
 
@@ -622,9 +715,10 @@ export function useGetAllCoordinatorsAsAdmin(adminPassword: string) {
     queryKey: ["coordinators", "admin"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllCoordinatorsAsAdmin(adminPassword);
+      return retryRead(() => actor.getAllCoordinatorsAsAdmin(adminPassword));
     },
     enabled: !!actor && !isFetching && !!adminPassword,
+    retry: 3,
   });
 }
 
@@ -634,9 +728,10 @@ export function useGetAllVolunteersAsAdmin(adminPassword: string) {
     queryKey: ["volunteers", "admin"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllVolunteersAsAdmin(adminPassword);
+      return retryRead(() => actor.getAllVolunteersAsAdmin(adminPassword));
     },
     enabled: !!actor && !isFetching && !!adminPassword,
+    retry: 3,
   });
 }
 
@@ -648,10 +743,11 @@ export function useGetChatMessages() {
     queryKey: ["chat"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getChatMessages();
+      return retryRead(() => actor.getChatMessages());
     },
     enabled: !!actor && !isFetching,
     refetchInterval: 3000,
+    retry: 3,
   });
 }
 
@@ -660,7 +756,10 @@ export function useSendMessage() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (message: string) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.sendMessage(message);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["chat"] }),
@@ -672,7 +771,10 @@ export function useDeleteVolunteer() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string) => {
-      if (!actor) throw new Error("Actor not ready");
+      if (!actor)
+        throw new Error(
+          "Server not ready. Please wait a moment and try again.",
+        );
       return actor.deleteVolunteer(id);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["volunteers"] }),
@@ -685,8 +787,9 @@ export function useGetMyVolunteerProfile() {
     queryKey: ["myVolunteerProfile"],
     queryFn: async () => {
       if (!actor) return null;
-      return actor.getMyVolunteerProfile();
+      return retryRead(() => actor.getMyVolunteerProfile());
     },
     enabled: !!actor && !isFetching,
+    retry: 3,
   });
 }
