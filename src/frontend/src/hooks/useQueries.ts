@@ -44,6 +44,7 @@ export function useGetAllEvents() {
     },
     enabled: !!actor && !isFetching,
     retry: 3,
+    refetchInterval: 15000,
   });
 }
 
@@ -305,6 +306,7 @@ export function useGetMyAttendance() {
     },
     enabled: !!actor && !isFetching,
     retry: 3,
+    refetchInterval: 15000,
   });
 }
 
@@ -352,6 +354,7 @@ export function useGetMyTotalServiceHours() {
     },
     enabled: !!actor && !isFetching,
     retry: 3,
+    refetchInterval: 15000,
   });
 }
 
