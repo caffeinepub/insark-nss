@@ -315,7 +315,7 @@ export default function LandingPage({ onLogin }: Props) {
     setCoordinatorLoading(true);
     setCoordinatorRetryStatus("Connecting to server...");
     const delay = (ms: number) => new Promise((res) => setTimeout(res, ms));
-    const maxRetries = 4;
+    const maxRetries = 8;
     // Create actor once and reuse -- avoids repeated connection overhead
     let coordActor: Awaited<ReturnType<typeof createActorWithConfig>> | null =
       null;
@@ -360,7 +360,7 @@ export default function LandingPage({ onLogin }: Props) {
         console.error(`Coordinator login attempt ${attempt} failed:`, e);
         coordActor = null; // reset on error
         if (attempt < maxRetries) {
-          await delay(1000);
+          await delay(2000);
         } else {
           setCoordinatorRetryStatus("");
           setCoordinatorLoading(false);
