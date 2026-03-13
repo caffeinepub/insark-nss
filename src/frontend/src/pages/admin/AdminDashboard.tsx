@@ -46,6 +46,7 @@ import { motion } from "motion/react";
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Coordinator, Volunteer } from "../../backend.d";
+import { createActorWithConfig } from "../../config";
 import { useActor } from "../../hooks/useActor";
 import {
   useGetAllCoordinatorsAsAdmin,
@@ -428,7 +429,6 @@ function CoordinatorsPage({ adminPassword }: { adminPassword: string }) {
 // ── Volunteers Page ───────────────────────────────────────────────────────────
 
 function VolunteersPage({ adminPassword }: { adminPassword: string }) {
-  const { actor } = useActor();
   const queryClient = useQueryClient();
   const { data: volunteers = [], isLoading } =
     useGetAllVolunteersAsAdmin(adminPassword);
@@ -437,21 +437,44 @@ function VolunteersPage({ adminPassword }: { adminPassword: string }) {
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
-    if (!actor) {
-      toast.error("Service not ready. Please wait a moment and try again.");
-      return;
-    }
     setDeletingId(confirmDelete.id);
-    try {
-      await actor.deleteVolunteerAsAdmin(adminPassword, confirmDelete.id);
-      toast.success(`${confirmDelete.name} has been removed`);
-      queryClient.invalidateQueries();
-    } catch {
-      toast.error("Failed to remove volunteer. Please try again.");
-    } finally {
-      setDeletingId(null);
-      setConfirmDelete(null);
+    let lastErr: unknown = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        // Always create a fresh actor to avoid stale connection issues
+        const freshActor = await createActorWithConfig();
+        await freshActor.deleteVolunteerAsAdmin(
+          adminPassword,
+          confirmDelete.id,
+        );
+        toast.success(`${confirmDelete.name} has been removed`);
+        queryClient.invalidateQueries();
+        setDeletingId(null);
+        setConfirmDelete(null);
+        return;
+      } catch (err) {
+        lastErr = err;
+        console.error(`Admin delete volunteer attempt ${attempt} failed:`, err);
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 1500));
+      }
     }
+    let msg = "";
+    if (lastErr && typeof lastErr === "object") {
+      const e = lastErr as Record<string, unknown>;
+      msg =
+        (e.reject_message as string) ||
+        (e.message as string) ||
+        String(lastErr);
+    } else {
+      msg = String(lastErr);
+    }
+    if (msg.includes("Unauthorized") || msg.includes("password")) {
+      toast.error("Wrong admin password. Please log out and log in again.");
+    } else {
+      toast.error(`Failed to remove volunteer: ${msg.substring(0, 200)}`);
+    }
+    setDeletingId(null);
+    setConfirmDelete(null);
   };
 
   return (
@@ -1002,21 +1025,6 @@ export default function AdminDashboard({ onLogout, adminPassword }: Props) {
             <LogOut className="w-4 h-4 flex-shrink-0" />
             <span className="text-sm font-body">Sign Out</span>
           </button>
-
-          <p
-            className="text-center text-xs font-body mt-3"
-            style={{ color: "oklch(0.38 0.03 140)" }}
-          >
-            © {new Date().getFullYear()}.{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:opacity-80 transition-opacity"
-            >
-              caffeine.ai
-            </a>
-          </p>
         </div>
       </aside>
 

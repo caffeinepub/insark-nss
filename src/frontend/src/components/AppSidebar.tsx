@@ -194,22 +194,6 @@ export default function AppSidebar({
             <LogOut className="w-4 h-4 flex-shrink-0" />
             <span className="text-sm font-body">Sign Out</span>
           </button>
-
-          {/* Footer */}
-          <p
-            className="text-center text-xs font-body mt-3"
-            style={{ color: "oklch(0.45 0.03 140)" }}
-          >
-            © {new Date().getFullYear()}.{" "}
-            <a
-              href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline"
-            >
-              caffeine.ai
-            </a>
-          </p>
         </div>
       </aside>
     </>

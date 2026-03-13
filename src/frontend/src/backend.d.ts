@@ -119,6 +119,7 @@ export enum UserRole {
     guest = "guest"
 }
 export interface backendInterface {
+    _initializeAccessControlWithSecret(secret: string): Promise<void>;
     addPhoto(eventId: string, title: string, blobId: ExternalBlob): Promise<Photo>;
     addServiceHours(volunteerId: string, eventId: string, hours: bigint, date: bigint): Promise<ServiceHours>;
     adminLogin(password: string): Promise<boolean>;
@@ -135,6 +136,7 @@ export interface backendInterface {
     deletePhoto(id: string): Promise<void>;
     deleteVolunteer(id: string): Promise<void>;
     deleteVolunteerAsAdmin(adminPwd: string, id: string): Promise<void>;
+    deleteVolunteerByCoordinator(coordEmail: string, coordPassword: string, id: string): Promise<void>;
     generateEventAttendanceSummary(eventId: string): Promise<bigint>;
     generateEventAttendanceSummaryAsAdmin(adminPwd: string, eventId: string): Promise<bigint>;
     generateVolunteerHoursSummary(): Promise<Array<[string, bigint]>>;

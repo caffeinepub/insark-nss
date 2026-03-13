@@ -45,6 +45,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { getSession } from "../../../App";
 import type { Volunteer } from "../../../backend.d";
+import { createActorWithConfig } from "../../../config";
 import { useActor } from "../../../hooks/useActor";
 import {
   useGetAllVolunteers,
@@ -68,7 +69,6 @@ function VolunteerDetail({
   const { data: serviceHours, isLoading: loadingHours } =
     useGetServiceHoursByVolunteer(volunteer.id);
   const updateVolunteer = useUpdateVolunteerById();
-  const { actor } = useActor();
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -108,23 +108,40 @@ function VolunteerDetail({
 
   async function handleDelete() {
     const session = getSession();
-    if (!actor) {
-      toast.error("Service not ready. Please wait a moment and try again.");
-      setDeleteOpen(false);
-      return;
-    }
-    try {
-      await actor.deleteVolunteerByCoordinator(
-        session?.email ?? "",
-        session?.password ?? "",
-        volunteer.id,
-      );
-      toast.success(`${volunteer.name} has been removed`);
-      onDeleted();
-    } catch {
-      toast.error("Failed to remove volunteer. Please try again.");
-    }
     setDeleteOpen(false);
+    const email = session?.email ?? "";
+    const password = session?.password ?? "";
+    let lastErr: unknown = null;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        // Always create a fresh actor to avoid stale connection issues
+        const freshActor = await createActorWithConfig();
+        await freshActor.deleteVolunteerByCoordinator(
+          email,
+          password,
+          volunteer.id,
+        );
+        toast.success(`${volunteer.name} has been removed`);
+        onDeleted();
+        return;
+      } catch (err) {
+        lastErr = err;
+        console.error(`Delete volunteer attempt ${attempt} failed:`, err);
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 1500));
+      }
+    }
+    // Extract the most useful part of ICP rejection errors
+    let msg = "";
+    if (lastErr && typeof lastErr === "object") {
+      const e = lastErr as Record<string, unknown>;
+      msg =
+        (e.reject_message as string) ||
+        (e.message as string) ||
+        String(lastErr);
+    } else {
+      msg = String(lastErr);
+    }
+    toast.error(`Failed to remove volunteer: ${msg.substring(0, 200)}`);
   }
 
   return (

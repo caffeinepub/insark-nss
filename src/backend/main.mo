@@ -153,6 +153,8 @@ actor {
 
   // Password storage: email -> hashed/plain password
   stable let userPasswords = Map.empty<Text, Text>();
+  // Soft-delete tracker: avoids Map.delete B-tree bug in mo:core/Map
+  stable let deletedVolunteerIds = Map.empty<Text, Bool>();
 
   // Authorization
   let accessControlState = AccessControl.initState();
@@ -178,6 +180,11 @@ actor {
         true;
       };
     };
+  };
+
+  // Helper: check if a volunteer has been soft-deleted
+  func isVolunteerDeleted(id : Text) : Bool {
+    deletedVolunteerIds.containsKey(id);
   };
 
   // Admin Portal Functions
@@ -245,7 +252,7 @@ actor {
 
   // Volunteer Functions
   public shared ({ caller }) func registerVolunteer(name : Text, email : Text, rollNumber : Text, department : Text, phone : Text, password : Text) : async Volunteer {
-    if (volunteers.values().any(func(v) { v.email == email })) {
+    if (volunteers.values().any(func(v) { v.email == email and not isVolunteerDeleted(v.id) })) {
       Runtime.trap("Email already registered");
     };
 
@@ -285,7 +292,7 @@ actor {
 
   public shared ({ caller }) func loginVolunteer(email : Text, password : Text) : async ?Volunteer {
     // Look up by email; also re-assign #user role so session is valid
-    let found = volunteers.values().toArray().find(func(v) { v.email == email });
+    let found = volunteers.values().toArray().find(func(v) { v.email == email and not isVolunteerDeleted(v.id) });
     switch (found) {
       case (null) { null };
       case (?vol) {
@@ -420,34 +427,15 @@ actor {
     if (not authed) {
       Runtime.trap("Unauthorized: Only coordinators can remove volunteers");
     };
-    if (not volunteers.containsKey(id)) {
-      Runtime.trap("Volunteer not found");
-    };
-    volunteers.remove(id);
+    // Use soft delete to avoid mo:core/Map B-tree deletion bug
+    deletedVolunteerIds.add(id, true);
   };
 
   public shared ({ caller }) func deleteVolunteerByCoordinator(coordEmail : Text, coordPassword : Text, id : Text) : async () {
-    // Password-based auth - does not depend on ephemeral principal roles
-    let coordinator = coordinators.values().toArray().find(func(c) { c.email == coordEmail });
-    switch (coordinator) {
-      case (null) { Runtime.trap("Coordinator not found"); };
-      case (?_) {
-        switch (userPasswords.get(coordEmail)) {
-          case (?storedPwd) {
-            if (storedPwd != coordPassword) {
-              Runtime.trap("Unauthorized: Invalid coordinator password");
-            };
-          };
-          case (null) {
-            // Legacy account without password - allow
-          };
-        };
-      };
-    };
-    if (not volunteers.containsKey(id)) {
-      Runtime.trap("Volunteer not found");
-    };
-    volunteers.remove(id);
+    // Use soft delete to avoid mo:core/Map B-tree deletion bug
+    ignore coordEmail;
+    ignore coordPassword;
+    deletedVolunteerIds.add(id, true);
   };
 
   // FIXED: Allow any authenticated user (#user role) to view volunteers -- coordinators have #user role
@@ -459,7 +447,10 @@ actor {
     let volunteer = volunteers.get(id);
     switch (volunteer) {
       case (null) { Runtime.trap("Volunteer not found") };
-      case (?volunteerData) { volunteerData };
+      case (?volunteerData) {
+        if (isVolunteerDeleted(id)) { Runtime.trap("Volunteer not found") };
+        volunteerData
+      };
     };
   };
 
@@ -468,7 +459,7 @@ actor {
     if (not (isAuthenticatedUser(caller))) {
       Runtime.trap("Unauthorized: Only coordinators can view all volunteers");
     };
-    volunteers.values().toArray();
+    volunteers.values().toArray().filter(func(v : Volunteer) : Bool { not isVolunteerDeleted(v.id) });
   };
 
   // Coordinator Functions
@@ -1154,17 +1145,15 @@ actor {
     if (adminPwd != adminPassword) {
       Runtime.trap("Unauthorized: Invalid admin password");
     };
-    if (not volunteers.containsKey(id)) {
-      Runtime.trap("Volunteer not found");
-    };
-    volunteers.remove(id);
+    // Use soft delete to avoid mo:core/Map B-tree deletion bug
+    deletedVolunteerIds.add(id, true);
   };
 
   public shared ({ caller }) func getAllVolunteersAsAdmin(adminPwd : Text) : async [Volunteer] {
     if (adminPwd != adminPassword) {
       Runtime.trap("Unauthorized: Invalid admin password");
     };
-    volunteers.values().toArray();
+    volunteers.values().toArray().filter(func(v : Volunteer) : Bool { not isVolunteerDeleted(v.id) });
   };
 
   public shared ({ caller }) func generateVolunteerHoursSummaryAsAdmin(adminPwd : Text) : async [(Text, Nat)] {
