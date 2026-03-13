@@ -9,14 +9,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CheckSquare, X } from "lucide-react";
+import { CheckSquare, RefreshCw, X } from "lucide-react";
 import { motion } from "motion/react";
 import { useMemo } from "react";
 import type { AuthSession } from "../../../App";
 import {
   useGetAllEvents,
-  useGetMyAttendance,
-  useGetMyTotalServiceHours,
+  useGetAttendanceForEvent,
+  useGetServiceHoursByVolunteer,
   useGetVolunteerById,
 } from "../../../hooks/useQueries";
 
@@ -27,9 +27,11 @@ interface Props {
 const MAX_DAYS = 6;
 
 export default function VolunteerAttendance({ session }: Props) {
-  const { data: attendance, isLoading: loadingAtt } = useGetMyAttendance();
-  const { data: events, isLoading: loadingEvents } = useGetAllEvents();
-  const { data: totalServiceHours } = useGetMyTotalServiceHours();
+  const {
+    data: events,
+    isLoading: loadingEvents,
+    dataUpdatedAt,
+  } = useGetAllEvents();
   const { data: volunteerProfile } = useGetVolunteerById(session.id);
 
   const visibleEvents = useMemo(
@@ -37,43 +39,90 @@ export default function VolunteerAttendance({ session }: Props) {
     [events],
   );
 
-  const attendedEventIds = useMemo(
-    () => new Set((attendance ?? []).map((a) => a.eventId)),
-    [attendance],
+  const { data: att0, isLoading: l0 } = useGetAttendanceForEvent(
+    visibleEvents[0]?.id ?? "",
+    15000,
+  );
+  const { data: att1, isLoading: l1 } = useGetAttendanceForEvent(
+    visibleEvents[1]?.id ?? "",
+    15000,
+  );
+  const { data: att2, isLoading: l2 } = useGetAttendanceForEvent(
+    visibleEvents[2]?.id ?? "",
+    15000,
+  );
+  const { data: att3, isLoading: l3 } = useGetAttendanceForEvent(
+    visibleEvents[3]?.id ?? "",
+    15000,
+  );
+  const { data: att4, isLoading: l4 } = useGetAttendanceForEvent(
+    visibleEvents[4]?.id ?? "",
+    15000,
+  );
+  const { data: att5, isLoading: l5 } = useGetAttendanceForEvent(
+    visibleEvents[5]?.id ?? "",
+    15000,
   );
 
-  const days = useMemo(
-    () =>
-      Array.from(
-        { length: MAX_DAYS },
-        (_, i) =>
-          !!visibleEvents[i] && attendedEventIds.has(visibleEvents[i].id),
-      ),
-    [visibleEvents, attendedEventIds],
-  );
+  const { data: serviceHours, isLoading: loadingSH } =
+    useGetServiceHoursByVolunteer(session.id, 15000);
+
+  const days = useMemo(() => {
+    const atts = [att0, att1, att2, att3, att4, att5];
+    return atts.map((att) =>
+      (att ?? []).some((a) => a.volunteerId === session.id),
+    );
+  }, [att0, att1, att2, att3, att4, att5, session.id]);
 
   const total = days.filter(Boolean).length;
-  const activityPoint = Number(totalServiceHours ?? 0);
+
+  const activityPoint = useMemo(() => {
+    if (!serviceHours || serviceHours.length === 0) return 0;
+    return serviceHours.reduce((sum, sh) => sum + Number(sh.hours), 0);
+  }, [serviceHours]);
+
   const totalPoints = activityPoint * total;
 
-  const isLoading = loadingAtt || loadingEvents;
+  const isLoading =
+    loadingEvents || l0 || l1 || l2 || l3 || l4 || l5 || loadingSH;
+
+  const lastSynced = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
+  const formatTime = (d: Date) =>
+    d.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
 
   return (
     <div className="page-container">
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
+        className="flex items-start justify-between"
       >
-        <h1 className="text-2xl font-display font-bold">My Attendance</h1>
-        <p className="text-muted-foreground font-body text-sm mt-1">
-          Your attendance records marked by coordinators
-        </p>
+        <div>
+          <h1 className="text-2xl font-display font-bold">My Attendance</h1>
+          <p className="text-muted-foreground font-body text-sm mt-1">
+            Your attendance records marked by coordinators
+          </p>
+        </div>
+        {lastSynced && (
+          <div
+            data-ocid="attendance.success_state"
+            className="flex items-center gap-1.5 text-xs text-muted-foreground font-body mt-1"
+          >
+            <RefreshCw className="w-3 h-3 animate-pulse text-green-500" />
+            <span>Last synced: {formatTime(lastSynced)}</span>
+          </div>
+        )}
       </motion.div>
 
       <Alert className="border-amber-200 bg-amber-50">
         <CheckSquare className="h-4 w-4 text-amber-600" />
         <AlertDescription className="text-amber-700 font-body text-sm">
-          Attendance is marked by coordinators only. You cannot self-check-in.
+          Attendance is marked by coordinators only. This table auto-updates
+          every 15 seconds.
         </AlertDescription>
       </Alert>
 

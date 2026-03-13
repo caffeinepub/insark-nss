@@ -3,7 +3,7 @@ import {
   Bell,
   Calendar,
   CheckSquare,
-  Clock,
+  FileUp,
   Image,
   LayoutDashboard,
   Menu,
@@ -22,7 +22,7 @@ import VolunteerEvents from "./pages/Events";
 import VolunteerFeedback from "./pages/Feedback";
 import VolunteerGallery from "./pages/Gallery";
 import VolunteerNotifications from "./pages/Notifications";
-import VolunteerServiceHours from "./pages/ServiceHours";
+import VolunteerUploadReport from "./pages/UploadReport";
 
 interface Props {
   session: AuthSession;
@@ -33,7 +33,7 @@ type VolunteerPage =
   | "dashboard"
   | "events"
   | "attendance"
-  | "service-hours"
+  | "upload-report"
   | "gallery"
   | "certificates"
   | "feedback"
@@ -70,10 +70,10 @@ export default function VolunteerDashboard({ session, onLogout }: Props) {
       ocid: "nav.volunteer.attendance_link",
     },
     {
-      key: "service-hours",
-      label: "Service Hours",
-      icon: Clock,
-      ocid: "nav.volunteer.hours_link",
+      key: "upload-report",
+      label: "Upload Report",
+      icon: FileUp,
+      ocid: "nav.volunteer.upload_report_link",
     },
     {
       key: "gallery",
@@ -118,8 +118,8 @@ export default function VolunteerDashboard({ session, onLogout }: Props) {
         return <VolunteerEvents />;
       case "attendance":
         return <VolunteerAttendance session={session} />;
-      case "service-hours":
-        return <VolunteerServiceHours session={session} />;
+      case "upload-report":
+        return <VolunteerUploadReport session={session} />;
       case "gallery":
         return <VolunteerGallery />;
       case "certificates":

@@ -6,6 +6,23 @@ import { getSecretParameter } from "../utils/urlParams";
 import { useInternetIdentity } from "./useInternetIdentity";
 
 const ACTOR_QUERY_KEY = "actor";
+
+async function createActorWithRetry(
+  options?: Parameters<typeof createActorWithConfig>[0],
+  retries = 5,
+): Promise<backendInterface> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const actor = await createActorWithConfig(options);
+      return actor;
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise((res) => setTimeout(res, 2000 * (i + 1)));
+    }
+  }
+  throw new Error("Failed to create actor after retries");
+}
+
 export function useActor() {
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
@@ -14,46 +31,32 @@ export function useActor() {
     queryFn: async () => {
       const isAuthenticated = !!identity;
 
-      // Retry actor creation up to 5 times with backoff on cold starts
-      let lastError: unknown;
-      for (let attempt = 0; attempt < 5; attempt++) {
-        try {
-          if (!isAuthenticated) {
-            return await createActorWithConfig();
-          }
-
-          const actorOptions = {
-            agentOptions: {
-              identity,
-            },
-          };
-
-          const actor = await createActorWithConfig(actorOptions);
-          const adminToken = getSecretParameter("caffeineAdminToken") || "";
-
-          // Wrap initialization in try/catch so a cold-start failure
-          // doesn't prevent the actor from being returned
-          try {
-            await actor._initializeAccessControlWithSecret(adminToken);
-          } catch {
-            // Initialization failed (cold start / canister waking up)
-            // The actor is still usable for all other calls
-          }
-
-          return actor;
-        } catch (err) {
-          lastError = err;
-          if (attempt < 4) {
-            await new Promise((r) => setTimeout(r, 2000 * (attempt + 1)));
-          }
-        }
+      if (!isAuthenticated) {
+        return await createActorWithRetry();
       }
-      throw lastError;
+
+      const actorOptions = {
+        agentOptions: {
+          identity,
+        },
+      };
+
+      const actor = await createActorWithRetry(actorOptions);
+
+      // Wrap in try-catch so a cold-start failure here never kills the actor
+      try {
+        const adminToken = getSecretParameter("caffeineAdminToken") || "";
+        await actor._initializeAccessControlWithSecret(adminToken);
+      } catch (_err) {
+        // Ignore -- canister may be cold-starting; actor is still usable
+      }
+
+      return actor;
     },
     staleTime: Number.POSITIVE_INFINITY,
     enabled: true,
-    retry: 3,
-    retryDelay: (attempt) => 2000 * (attempt + 1),
+    retry: 5,
+    retryDelay: (attempt) => Math.min(2000 * (attempt + 1), 10000),
   });
 
   // When the actor changes, invalidate dependent queries

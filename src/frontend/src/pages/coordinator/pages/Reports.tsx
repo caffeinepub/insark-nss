@@ -17,27 +17,57 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { BarChart2, Download, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  BarChart2,
+  Download,
+  FileText,
+  Loader2,
+  MessageSquare,
+} from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import {
   useGenerateEventAttendanceSummary,
   useGenerateVolunteerHoursSummary,
   useGetAllEvents,
+  useGetAllFeedback,
   useGetAllVolunteers,
+  useRespondToFeedback,
 } from "../../../hooks/useQueries";
-import { exportCSV } from "../../../lib/helpers";
+import { exportCSV, formatDate } from "../../../lib/helpers";
+
+const REPORT_PREFIX = "[REPORT]";
+
+function parseReport(message: string) {
+  const body = message.slice(REPORT_PREFIX.length).trim();
+  const titleMatch = body.match(/^Title: (.+)\n/);
+  const contentMatch = body.match(/\nContent: ([\s\S]*)$/);
+  return {
+    title: titleMatch ? titleMatch[1] : "Untitled Report",
+    content: contentMatch ? contentMatch[1] : body,
+  };
+}
 
 export default function CoordReports() {
   const { data: hoursSummary, isLoading: loadingHours } =
     useGenerateVolunteerHoursSummary();
   const { data: volunteers } = useGetAllVolunteers();
   const { data: events } = useGetAllEvents();
+  const { data: allFeedback, isLoading: loadingReports } = useGetAllFeedback();
   const [selectedEventId, setSelectedEventId] = useState<string>("");
   const { data: eventAttendance, isLoading: loadingAttendance } =
     useGenerateEventAttendanceSummary(selectedEventId);
+  const respondMutation = useRespondToFeedback();
+  const [replyingId, setReplyingId] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
 
   const volunteerMap = new Map(volunteers?.map((v) => [v.id, v]) ?? []);
+
+  // Filter only volunteer reports
+  const volunteerReports = (allFeedback ?? [])
+    .filter((f) => f.message.startsWith(REPORT_PREFIX))
+    .sort((a, b) => Number(b.submittedAt) - Number(a.submittedAt));
 
   const handleExportHours = () => {
     if (!hoursSummary) return;
@@ -74,6 +104,16 @@ export default function CoordReports() {
     ]);
   };
 
+  const handleSendReply = async (reportId: string) => {
+    if (!replyText.trim()) return;
+    await respondMutation.mutateAsync({
+      id: reportId,
+      response: replyText.trim(),
+    });
+    setReplyingId(null);
+    setReplyText("");
+  };
+
   return (
     <div className="page-container">
       <motion.div
@@ -84,6 +124,169 @@ export default function CoordReports() {
         <p className="text-muted-foreground font-body text-sm mt-1">
           Generate and export NSS activity reports
         </p>
+      </motion.div>
+
+      {/* Volunteer Submitted Reports */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+      >
+        <Card className="shadow-card">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-display flex items-center gap-2">
+              <FileText className="w-4 h-4" />
+              Volunteer Reports
+              {volunteerReports.length > 0 && (
+                <Badge className="font-body text-xs ml-1">
+                  {volunteerReports.length}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loadingReports ? (
+              <div className="space-y-3">
+                {[1, 2].map((i) => (
+                  <Skeleton key={i} className="h-20" />
+                ))}
+              </div>
+            ) : volunteerReports.length === 0 ? (
+              <div
+                data-ocid="reports.volunteer_reports_empty_state"
+                className="text-center py-8"
+              >
+                <FileText className="w-10 h-10 mx-auto mb-2 opacity-20 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground font-body">
+                  No reports submitted by volunteers yet
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {volunteerReports.map((report, idx) => {
+                  const parsed = parseReport(report.message);
+                  const vol = volunteerMap.get(report.volunteerId);
+                  const isReplying = replyingId === report.id;
+                  return (
+                    <div
+                      key={report.id}
+                      data-ocid={`reports.volunteer_report.${idx + 1}`}
+                      className="p-4 rounded-xl border"
+                      style={{ background: "oklch(0.98 0.005 140)" }}
+                    >
+                      <div className="flex items-start justify-between gap-2 flex-wrap">
+                        <div>
+                          <p className="font-body font-semibold text-sm">
+                            {parsed.title}
+                          </p>
+                          <p className="text-xs text-muted-foreground font-body mt-0.5">
+                            {vol?.name ?? report.volunteerId} &middot;{" "}
+                            {formatDate(report.submittedAt)}
+                          </p>
+                        </div>
+                        <Badge
+                          variant="outline"
+                          className="font-body text-xs shrink-0"
+                          style={{
+                            borderColor: report.coordinatorResponse
+                              ? "oklch(0.55 0.15 150)"
+                              : "oklch(0.7 0.05 200)",
+                            color: report.coordinatorResponse
+                              ? "oklch(0.32 0.09 152)"
+                              : "oklch(0.5 0.05 200)",
+                          }}
+                        >
+                          {report.coordinatorResponse ? "Reviewed" : "Pending"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm font-body text-foreground mt-2">
+                        {parsed.content}
+                      </p>
+
+                      {report.coordinatorResponse && (
+                        <div
+                          className="mt-3 p-3 rounded-lg text-sm font-body"
+                          style={{
+                            background: "oklch(0.94 0.02 145)",
+                            color: "oklch(0.28 0.09 152)",
+                          }}
+                        >
+                          <span className="font-semibold">Your reply: </span>
+                          {report.coordinatorResponse}
+                        </div>
+                      )}
+
+                      {!report.coordinatorResponse && (
+                        <div className="mt-3">
+                          {isReplying ? (
+                            <div className="space-y-2">
+                              <Textarea
+                                data-ocid={`reports.report_reply_textarea.${idx + 1}`}
+                                placeholder="Write a reply..."
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                rows={2}
+                                className="font-body text-sm resize-none"
+                              />
+                              <div className="flex gap-2">
+                                <Button
+                                  data-ocid={`reports.report_reply_submit.${idx + 1}`}
+                                  size="sm"
+                                  className="font-body text-xs"
+                                  style={{
+                                    background: "oklch(0.32 0.09 152)",
+                                    color: "white",
+                                  }}
+                                  disabled={
+                                    respondMutation.isPending ||
+                                    !replyText.trim()
+                                  }
+                                  onClick={() => handleSendReply(report.id)}
+                                >
+                                  {respondMutation.isPending ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    "Send Reply"
+                                  )}
+                                </Button>
+                                <Button
+                                  data-ocid={`reports.report_reply_cancel.${idx + 1}`}
+                                  size="sm"
+                                  variant="ghost"
+                                  className="font-body text-xs"
+                                  onClick={() => {
+                                    setReplyingId(null);
+                                    setReplyText("");
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <Button
+                              data-ocid={`reports.report_reply_button.${idx + 1}`}
+                              size="sm"
+                              variant="outline"
+                              className="font-body text-xs"
+                              onClick={() => {
+                                setReplyingId(report.id);
+                                setReplyText("");
+                              }}
+                            >
+                              <MessageSquare className="w-3 h-3 mr-1.5" />
+                              Reply
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Volunteer Hours Summary */}
@@ -264,7 +467,6 @@ export default function CoordReports() {
               </div>
             )}
 
-            {/* All Events Quick Table */}
             {events && events.length > 0 && (
               <Table>
                 <TableHeader>

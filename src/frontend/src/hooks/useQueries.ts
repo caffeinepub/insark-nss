@@ -296,6 +296,7 @@ export function useSaveCallerUserProfile() {
 
 // ── Attendance ───────────────────────────────────────────────────────────────
 
+// Volunteer's own attendance -- polls every 5 seconds to pick up coordinator updates quickly
 export function useGetMyAttendance() {
   const { actor, isFetching } = useActor();
   return useQuery<Attendance[]>({
@@ -306,11 +307,14 @@ export function useGetMyAttendance() {
     },
     enabled: !!actor && !isFetching,
     retry: 3,
-    refetchInterval: 15000,
+    refetchInterval: 5000,
   });
 }
 
-export function useGetAttendanceForEvent(eventId: string) {
+export function useGetAttendanceForEvent(
+  eventId: string,
+  pollInterval?: number,
+) {
   const { actor, isFetching } = useActor();
   return useQuery<Attendance[]>({
     queryKey: ["attendance", "event", eventId],
@@ -320,6 +324,7 @@ export function useGetAttendanceForEvent(eventId: string) {
     },
     enabled: !!actor && !isFetching && !!eventId,
     retry: 3,
+    refetchInterval: pollInterval,
   });
 }
 
@@ -338,12 +343,15 @@ export function useManuallyMarkAttendance() {
       qc.invalidateQueries({
         queryKey: ["attendance", "event", params.eventId],
       });
+      // Also invalidate volunteer's own attendance view so they see update faster
+      qc.invalidateQueries({ queryKey: ["attendance", "mine"] });
     },
   });
 }
 
 // ── Service Hours ────────────────────────────────────────────────────────────
 
+// Polls every 5 seconds to pick up coordinator updates quickly
 export function useGetMyTotalServiceHours() {
   const { actor, isFetching } = useActor();
   return useQuery<bigint>({
@@ -354,11 +362,14 @@ export function useGetMyTotalServiceHours() {
     },
     enabled: !!actor && !isFetching,
     retry: 3,
-    refetchInterval: 15000,
+    refetchInterval: 5000,
   });
 }
 
-export function useGetServiceHoursByVolunteer(volunteerId: string) {
+export function useGetServiceHoursByVolunteer(
+  volunteerId: string,
+  pollInterval?: number,
+) {
   const { actor, isFetching } = useActor();
   return useQuery<ServiceHours[]>({
     queryKey: ["serviceHours", "volunteer", volunteerId],
@@ -368,6 +379,7 @@ export function useGetServiceHoursByVolunteer(volunteerId: string) {
     },
     enabled: !!actor && !isFetching && !!volunteerId,
     retry: 3,
+    refetchInterval: pollInterval,
   });
 }
 
